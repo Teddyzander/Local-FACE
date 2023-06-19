@@ -122,6 +122,6 @@ if __name__ == '__main__':
                  alpha=0.25)
     ax2.axis('off')
     ax2.plot([C1], [C2], marker="X", markersize=8, markeredgecolor="k", markerfacecolor="white", alpha=1, zorder=50)
-    plt.savefig('plots/CF_paths_no_bound.pdf', bbox_inches='tight')
+    plt.savefig('plots_no_distance_weight/CF_paths_no_bound.pdf', bbox_inches='tight')
 
     plt.show()
