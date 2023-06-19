@@ -1,5 +1,5 @@
 import numpy
-from sklearn.datasets import make_moons
+from sklearn.datasets import make_moons, make_circles, make_blobs
 from sklearn import manifold, preprocessing
 import numpy as np
 import pandas as pd
@@ -7,23 +7,32 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy import spatial
 
-seed = 10
-
-def create_two_moons():
-    K = 10
-    n_samples = 300
+def create_two_moons(num=300, seed=10, noise=0.15):
     np.random.seed(seed+1)
-    X, y = make_moons(n_samples=n_samples, noise=0.15)
+    X, y = make_moons(n_samples=num, noise=noise)
     X = preprocessing.minmax_scale(X)
 
-    # X = np.concatenate((X, np.array([[1.70, 0.45],
-    #                                 [-0.55, 0.55],
-    #                                 [0.50, 0.40]])))
-    # y = np.concatenate((y, np.array([1, 1, 1])))
     df = pd.DataFrame(preprocessing.minmax_scale(X), columns=["x1", "x2"])
     df["y"] = y
     return df
 
+def create_circles(num=300, seed=10, noise=0.15):
+    np.random.seed(seed+1)
+    X, y = make_circles(n_samples=num, noise=noise)
+    X = preprocessing.minmax_scale(X)
+
+    df = pd.DataFrame(preprocessing.minmax_scale(X), columns=["x1", "x2"])
+    df["y"] = y
+    return df
+
+def create_blobs(num=300, seed=10, noise=0.15):
+    np.random.seed(seed+1)
+    X, y = make_blobs(n_samples=num, n_features=2, centers=[(1, -1), (-1, 1)], cluster_std=1 + noise)
+    X = preprocessing.minmax_scale(X)
+
+    df = pd.DataFrame(preprocessing.minmax_scale(X), columns=["x1", "x2"])
+    df["y"] = y
+    return df
 
 def plot_dataset(ax, df):
     # Plot the dataset.
@@ -36,25 +45,25 @@ def plot_dataset(ax, df):
                #    edgecolors = 'black',
                zorder=1)
 
-    ax.grid(color="grey", linestyle="--", linewidth=0.5, alpha=0.75)
+    # ax.grid(color="grey", linestyle="--", linewidth=0.5, alpha=0.75)
 
     ax.set_ylim(0, 1)
     ax.set_xlim(0, 1)
-    ax.tick_params(axis='both', which='major', labelsize=20)
-    ax.set_ylabel(r"$x_2~\longrightarrow$", fontsize=24)
-    ax.set_xlabel(r"$x_1~\longleftrightarrow$", fontsize=24)
+    ax.tick_params(axis='both', which='major', labelsize=12)
+    ax.set_ylabel(r"$x_2$", fontsize=14)
+    ax.set_xlabel(r"$x_1$", fontsize=14)
     # ax.set_ylabel(r"$x_2~\longleftrightarrow$", fontsize=24)
 
     return ax
 
-def plot_decision_boundary(ax, X_scaled, predictor, color_bar=True):
+def plot_decision_boundary(ax, X_scaled, predictor, color_bar=False):
     h = 0.01
     x1_min, x2_min = np.min(X_scaled, axis=0)
     x1_max, x2_max = np.max(X_scaled, axis=0)
 
     x1_cords, x2_cords = np.meshgrid(
-        np.arange(x1_min, x1_max, h),
-        np.arange(x2_min, x2_max, h)
+        np.arange(x1_min, x1_max+h, h),
+        np.arange(x2_min, x2_max+h, h)
     )
     new_X = np.c_[x1_cords.ravel(), x2_cords.ravel()]
     new_X_df = pd.DataFrame(new_X, columns=["x1", "x2"])
@@ -117,8 +126,8 @@ def find_cf(x0, data, classifier, k=10, thresh=0.6):
         nei = tree.query(steps[i], k=k, p=2)
         close = nei[1]
 
-        # find probabilities of closest points
-        vals = (1/nei[0]) * classifier.predict_proba(tree.data[close])[:, 1]
+        # find weighted probabilities of closest points
+        vals = (1/(1+nei[0])) * classifier.predict_proba(tree.data[close])[:, 1]
 
         # save best move and delete from tree and rebuild
         indx = np.argmax(vals)
