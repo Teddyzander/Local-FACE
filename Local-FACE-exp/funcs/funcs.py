@@ -141,6 +141,78 @@ def find_cf(x0, data, classifier, k=10, thresh=0.6):
         i += 1
     return steps, cf
 
+def find_cf_mom(x0, data, classifier, k=10, thresh=0.6, mom=0, alpha=0.05):
+    """
+    Find a valid counterfactual by searching through nearby data points using momentum
+    Args:
+        x0: starting point n array
+        data: n by m array of all data in the field
+        classifier: the trained classifier
+        k: positive integer of how many neighbours to consider
+        thresh: minimum value of probability classifier to terminate algorithm
+        mom: positive int of number of last steps used to build momentum
+        alpha: positive float of maximum step size when using momentum
+    Returns:
+        steps: n by p array of p steps to get from x0 to a valid counterfactual
+        cf: valid counterfactual (last entry in steps)
+    """
+    steps = np.zeros((1,2))
+    # set up tree for k nearest neighbours
+    tree = spatial.KDTree(list(zip(data[:, 0], data[:, 1])))
+
+    # find closes k points to x0
+    close = tree.query(x0, k=k, p=2)[1]
+
+    # find probabilities of closest points
+    vals = classifier.predict_proba(tree.data[close])[:, 1]
+
+    # save best move and delete from tree and rebuild
+    indx = np.argmax(vals)
+    x_hat = tree.data[close[indx]]
+    steps[0] = np.array(tree.data[close[indx]])
+    cf = steps[0]
+    temp = np.delete(tree.data, close[indx], 0)
+    tree = spatial.KDTree(list(zip(temp[:, 0], temp[:, 1])))
+
+    #repeat until valid counterfactual is found
+    i = 0
+    while classifier.predict_proba([x_hat])[0, 1] < thresh:
+        # find closes k points to x0
+        nei = tree.query(steps[i], k=k, p=2)
+        close = nei[1]
+
+        # find weighted probabilities of closest points
+        vals = (1/(1+nei[0])) * classifier.predict_proba(tree.data[close])[:, 1]
+
+        # save best move and delete from tree and rebuild
+        indx = np.argmax(vals)
+        x_hat = tree.data[close[indx]]
+        best_step = np.array(tree.data[close[indx]])
+
+        if mom > 0:
+            if i > mom:
+                mom_dir = np.zeros(2)
+                for j in range(i - mom, mom):
+                    mom_dir += steps[j] - steps[j - 1]
+            else:
+                mom_dir = np.zeros(2)
+                for j in range(i):
+                    mom_dir += steps[j] - steps[j - 1]
+            mom_dir = mom_dir / mom
+            best_step = 0.5 * (steps[i] - best_step) + 0.5 * mom_dir
+            best_step_len = np.linalg.norm(best_step, 2)
+            if best_step_len > alpha:
+                best_step = (best_step / best_step_len) * alpha
+            best_step = x_hat + best_step
+
+        steps = np.append(steps, [best_step], axis=0)
+        temp = np.delete(tree.data, close[indx], 0)
+        tree = spatial.KDTree(list(zip(temp[:, 0], temp[:, 1])))
+
+        cf = best_step
+        i += 1
+    return steps, cf
+
 def best_path(x0, cf, data, dist, classifier, thresh):
     """
     Find best path through data from x0 to counterfactual via query balls of radius dist

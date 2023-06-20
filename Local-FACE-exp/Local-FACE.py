@@ -9,19 +9,19 @@ warnings.filterwarnings("ignore")
 
 # set parameters
 # number of nearest neighbours
-k = 5
+k = 10
 # threshold such that f(x)>thresh to be valid counterfactual
 thresh = 0.85
 # maximum step size allowed between data points to be labelled as feasible
 sphere = 0.1
 # starting point
-pnt = np.array([0.1, 0.9])
+pnt = np.array([0.1, 0.65])
 # seed for random generator
 seed = 10
 # number of samples
-samples = 250
+samples = 300
 # noise in data (1 + noise standard deviation if using blob)
-noise = 0.2
+noise = 0.15
 # dataset generator
 generator = funcs.create_two_moons
 
@@ -46,7 +46,8 @@ ax = funcs.plot_decision_boundary(ax, X1, clf)
 
 Xs = np.asarray((X1))
 start_time = time.time()
-steps, cf = funcs.find_cf(pnt, Xs, clf, k=k, thresh=thresh)
+steps, cf = funcs.find_cf_mom(pnt, Xs, clf, k=k, thresh=thresh, mom=10)
+# steps, cf = funcs.find_cf(pnt, Xs, clf, k=k, thresh=thresh)
 print('Time to find counterfactual: {} seconds'.format(np.round(time.time() - start_time, 2)))
 
 steps = np.insert(steps, 0, [pnt], axis=0)
@@ -65,6 +66,7 @@ plt.ylim([0,1])
 # plt.title('Best Path to Counterfactual using Hyper-sphere of size {} \nfrom {} to {}'.format(sphere, pnt, np.round(cf,2)))
 # plt.title('Finding Counterfactual Using {} Neighbours \nand {} Threshold from {}'.format(k, thresh, pnt))
 # legend = plt.legend(frameon=True, loc='lower left', fancybox=True, fontsize=12, framealpha=0.25)
-plt.savefig('plots/notes/moons_cf_neighbours_{}_from_({}, {})_spheresize_{}.pdf'.format(k, pnt[0], pnt[1], sphere), format='pdf')
+plt.savefig('plots/notes/mom10_moons_cf_neighbours_{}_from_({}, {})_spheresize_{}.pdf'.format(k, pnt[0], pnt[1], sphere),
+            format='pdf')
 
 plt.show()
