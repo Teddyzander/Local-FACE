@@ -40,13 +40,13 @@ steps, cf = face.find_cf(factual, k=k, thresh=thresh, mom=3)
 # generate graph nodes through data from factual to counterfactual
 best_steps = face.generate_graph(factual, cf, dist, thresh, early=True)
 # create edges between viable points and calculate the weights
-G = face.create_graph(0.25, 10)
+G = face.create_graph(0, 100, method='strict')
 # calculate shortest path through G from factual to counterfactual
 shortest_path = face.shortest_path()
 
 # plotting procedure
 # plot the data, the decision function, the searched path
-fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(18, 5))
+fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(18, 5), sharey=True)
 # finding counterfactual
 ax[0] = plot_dataset(ax[0], data)
 ax[0] = plot_decision_boundary(ax[0], X1, model)
@@ -67,12 +67,23 @@ ax[1].title.set_text('Exploit')
 ax[2] = plot_density(ax[2], X1, dense, levels=5)
 ax[2].set_xlim([0, 0.5])
 ax[2].set_ylim([0.2, 0.85])
-ax[2].plot(best_steps[shortest_path, 0], best_steps[shortest_path, 1], '-g', label='Optimise', linewidth=2)
+ax[2].plot(best_steps[shortest_path, 0], best_steps[shortest_path, 1], '-g', label='Enhance', linewidth=2)
 ax[2].plot(factual[0], factual[1], 'go', label='factual')
 ax[2].plot(best_steps[-1, 0], best_steps[-1, 1], '*b', label='$x^\prime$', markersize=12, alpha=0.7, markeredgecolor='white')
+ax[2].plot([factual[0], best_steps[-1, 0]],
+           [factual[1], best_steps[-1, 1]], '-r', linewidth=2)
+ax[2].plot([best_steps[shortest_path[1], 0], best_steps[shortest_path[3], 0]],
+           [best_steps[shortest_path[1], 1], best_steps[shortest_path[3], 1]], '-r', label='illegal edge', linewidth=2)
+
 ax[2].title.set_text('Enhance')
+ax[2].annotate("", xy=(0.21, 0.375), xytext=(0.21, 0.45), arrowprops=dict(arrowstyle="->", lw=2.5, color='black', alpha=.7))
+ax[2].text(0.21, 0.475, 'not allowed', va='center', ha='center',
+           rotation='horizontal', fontsize=12, color='black', alpha=.7)
+ax[2].annotate("", xy=(0.175, 0.67), xytext=(0.21, 0.5), arrowprops=dict(arrowstyle="->", lw=2.5, color='black', alpha=.7))
+ax[2].annotate("", xy=(0.28, 0.63), xytext=(0.21, 0.5), arrowprops=dict(arrowstyle="->", lw=2.5, color='black', alpha=.7))
 
 fig.tight_layout()
-plt.savefig("paper_figure_1.pdf", format='pdf')
+plt.savefig("paper_figure_strict.pdf", format='pdf')
+plt.show()
 
 print('stop')

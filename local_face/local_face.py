@@ -177,7 +177,7 @@ class LocalFace:
         self.steps = steps
         return steps
 
-    def create_graph(self, tol=0, sample=10):
+    def create_graph(self, tol=0, sample=10, method='strict'):
         """
         Create edges between viable nodes and calculate weight
         Args:
@@ -196,9 +196,19 @@ class LocalFace:
                     samples = np.array([np.linspace(self.steps[i][0], self.steps[j][0], sample + 1),
                                         np.linspace(self.steps[i][1], self.steps[j][1], sample + 1)]).T
                     score = self.dense.score_samples(samples)
-                    if all(k >= tol for k in score):
-                        w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2) # * score / (sample + 1)
-                        self.G.add_edge(i, j, weight=w)
+                    if method == 'avg':
+                        test = (np.sum(score) / (sample + 1))
+                        if test > tol:
+                            w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2) / test
+                            self.G.add_edge(i, j, weight=w)
+                    elif method == 'strict':
+                        if all(k >= tol for k in score):
+                            test = (np.sum(score) / (sample + 1))
+                            w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2)  / test
+                            self.G.add_edge(i, j, weight=w)
+                    else:
+                        print('no method selected')
+                        return 0
 
         return self.G
 
