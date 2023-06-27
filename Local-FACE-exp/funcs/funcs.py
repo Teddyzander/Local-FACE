@@ -5,10 +5,29 @@ import numpy as np
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import networkx as nx
 from scipy import spatial
 
+
+def creat_custom(num=300, seed=10, noise=0.15):
+    np.random.seed(seed + 1)
+    X1, y1 = make_blobs(n_samples=int(num / 4), n_features=2, centers=[(0.8, -0.1), (-0.1, 0.45)],
+                        cluster_std=noise * 2)
+    X2, y2 = make_moons(n_samples=num, noise=noise)
+    #X3, y3 = make_blobs(n_samples=int(num / 50), n_features=2, centers=[(-0.3, 0), (-0.3, 0)], cluster_std=noise * 3)
+
+    X = np.concatenate((X1, X2)) #, X3))
+    y = np.concatenate((y1, y2)) #, y3))
+
+    X = preprocessing.minmax_scale(X)
+
+    df = pd.DataFrame(preprocessing.minmax_scale(X), columns=["x1", "x2"])
+    df["y"] = y
+    return df
+
+
 def create_two_moons(num=300, seed=10, noise=0.15):
-    np.random.seed(seed+1)
+    np.random.seed(seed + 1)
     X, y = make_moons(n_samples=num, noise=noise)
     X = preprocessing.minmax_scale(X)
 
@@ -16,8 +35,9 @@ def create_two_moons(num=300, seed=10, noise=0.15):
     df["y"] = y
     return df
 
+
 def create_circles(num=300, seed=10, noise=0.15):
-    np.random.seed(seed+1)
+    np.random.seed(seed + 1)
     X, y = make_circles(n_samples=num, noise=noise)
     X = preprocessing.minmax_scale(X)
 
@@ -25,14 +45,16 @@ def create_circles(num=300, seed=10, noise=0.15):
     df["y"] = y
     return df
 
+
 def create_blobs(num=300, seed=10, noise=0.15):
-    np.random.seed(seed+1)
+    np.random.seed(seed + 1)
     X, y = make_blobs(n_samples=num, n_features=2, centers=[(1, -1), (-1, 1)], cluster_std=1 + noise)
     X = preprocessing.minmax_scale(X)
 
     df = pd.DataFrame(preprocessing.minmax_scale(X), columns=["x1", "x2"])
     df["y"] = y
     return df
+
 
 def plot_dataset(ax, df):
     # Plot the dataset.
@@ -41,7 +63,7 @@ def plot_dataset(ax, df):
     # dots_color_mapping =["b"]*num_points_top + ["r"]*num_points_left + ["#FAD689"]*num_points_middle + ["sienna"]*num_points_right
 
     ax.scatter(df.x1, df.x2, c=df.y,
-               cmap=dots_color_mapping, s=25,
+               cmap=dots_color_mapping, s=20,
                #    edgecolors = 'black',
                zorder=1)
 
@@ -56,14 +78,15 @@ def plot_dataset(ax, df):
 
     return ax
 
-def plot_decision_boundary(ax, X_scaled, predictor, color_bar=False):
+
+def plot_decision_boundary(ax, X_scaled, predictor, color_bar=False, levels=20):
     h = 0.01
     x1_min, x2_min = np.min(X_scaled, axis=0)
     x1_max, x2_max = np.max(X_scaled, axis=0)
 
     x1_cords, x2_cords = np.meshgrid(
-        np.arange(x1_min, x1_max+h, h),
-        np.arange(x2_min, x2_max+h, h)
+        np.arange(x1_min, x1_max + h, h),
+        np.arange(x2_min, x2_max + h, h)
     )
     new_X = np.c_[x1_cords.ravel(), x2_cords.ravel()]
     new_X_df = pd.DataFrame(new_X, columns=["x1", "x2"])
@@ -88,6 +111,7 @@ def plot_decision_boundary(ax, X_scaled, predictor, color_bar=False):
         cbar.ax.tick_params(labelsize=20)
     return ax
 
+
 def find_cf(x0, data, classifier, k=10, thresh=0.6):
     """
     Find a valid counterfactual by searching through nearby data points
@@ -101,7 +125,7 @@ def find_cf(x0, data, classifier, k=10, thresh=0.6):
         steps: n by p array of p steps to get from x0 to a valid counterfactual
         cf: valid counterfactual (last entry in steps)
     """
-    steps = np.zeros((1,2))
+    steps = np.zeros((1, 2))
     # set up tree for k nearest neighbours
     tree = spatial.KDTree(list(zip(data[:, 0], data[:, 1])))
 
@@ -119,7 +143,7 @@ def find_cf(x0, data, classifier, k=10, thresh=0.6):
     temp = np.delete(tree.data, close[indx], 0)
     tree = spatial.KDTree(list(zip(temp[:, 0], temp[:, 1])))
 
-    #repeat until valid counterfactual is found
+    # repeat until valid counterfactual is found
     i = 0
     while classifier.predict_proba([x_hat])[0, 1] < thresh:
         # find closes k points to x0
@@ -127,7 +151,7 @@ def find_cf(x0, data, classifier, k=10, thresh=0.6):
         close = nei[1]
 
         # find weighted probabilities of closest points
-        vals = (1/(1+nei[0])) * classifier.predict_proba(tree.data[close])[:, 1]
+        vals = (1 / (1 + nei[0])) * classifier.predict_proba(tree.data[close])[:, 1]
 
         # save best move and delete from tree and rebuild
         indx = np.argmax(vals)
@@ -140,6 +164,7 @@ def find_cf(x0, data, classifier, k=10, thresh=0.6):
         cf = best_step
         i += 1
     return steps, cf
+
 
 def find_cf_mom(x0, data, classifier, k=10, thresh=0.6, mom=0, alpha=0.05):
     """
@@ -156,7 +181,7 @@ def find_cf_mom(x0, data, classifier, k=10, thresh=0.6, mom=0, alpha=0.05):
         steps: n by p array of p steps to get from x0 to a valid counterfactual
         cf: valid counterfactual (last entry in steps)
     """
-    steps = np.zeros((1,2))
+    steps = np.zeros((1, 2))
     # set up tree for k nearest neighbours
     tree = spatial.KDTree(list(zip(data[:, 0], data[:, 1])))
 
@@ -174,7 +199,7 @@ def find_cf_mom(x0, data, classifier, k=10, thresh=0.6, mom=0, alpha=0.05):
     temp = np.delete(tree.data, close[indx], 0)
     tree = spatial.KDTree(list(zip(temp[:, 0], temp[:, 1])))
 
-    #repeat until valid counterfactual is found
+    # repeat until valid counterfactual is found
     i = 0
     while classifier.predict_proba([x_hat])[0, 1] < thresh:
         # find closes k points to x0
@@ -182,7 +207,7 @@ def find_cf_mom(x0, data, classifier, k=10, thresh=0.6, mom=0, alpha=0.05):
         close = nei[1]
 
         # find weighted probabilities of closest points
-        vals = (1/(1+nei[0])) * classifier.predict_proba(tree.data[close])[:, 1]
+        vals = (1 / (1 + nei[0])) * classifier.predict_proba(tree.data[close])[:, 1]
 
         # save best move and delete from tree and rebuild
         indx = np.argmax(vals)
@@ -210,10 +235,12 @@ def find_cf_mom(x0, data, classifier, k=10, thresh=0.6, mom=0, alpha=0.05):
         tree = spatial.KDTree(list(zip(temp[:, 0], temp[:, 1])))
 
         cf = best_step
+        x_hat = best_step
         i += 1
     return steps, cf
 
-def best_path(x0, cf, data, dist, classifier, thresh):
+
+def best_path(x0, cf, data, dist, classifier, kde, thresh, early):
     """
     Find best path through data from x0 to counterfactual via query balls of radius dist
     Args:
@@ -232,7 +259,7 @@ def best_path(x0, cf, data, dist, classifier, thresh):
     i = 1
     while not numpy.array_equiv(xt, cf):
         # check if current point actually meets criteria
-        if classifier.predict_proba([xt])[0, 1] >= thresh:
+        if classifier.predict_proba([xt])[0, 1] >= thresh and early:
             print('Better solution located en route')
             break
         # get vector of the best direction of travel
@@ -242,17 +269,21 @@ def best_path(x0, cf, data, dist, classifier, thresh):
         indx = tree.query_ball_point(xt, dist, p=2)
 
         # find viable point that is along the path of best direction
-        dot = -2
+        dot = -np.inf
         for j in indx:
             xi = tree.data[j]
             v = xt - xi
             v_len = np.linalg.norm(v, ord=2)
+            vdir_len = np.linalg.norm(cf - xi, ord=2)
             if v_len != 0:
-                temp = np.dot(dir, v) / (dir_len * v_len)
+                temp = (((1 + (np.dot(dir, v) / (dir_len * v_len))) / 2) * kde.score([(xi + xt) / 2])) / dir_len
                 if temp > dot:
                     dot = temp
                     best = j
-
+                    """prob = kde.score([xi])
+                    if prob > thresh_p:
+                        dot = temp
+                        best = j"""
 
         # if we have nowhere to go and we are at the beginning, terminate
         if len(indx) == 0 and numpy.array_equiv(xt, x0):
@@ -273,3 +304,24 @@ def best_path(x0, cf, data, dist, classifier, thresh):
             tree = spatial.KDTree(list(zip(temp[:, 0], temp[:, 1])))
 
     return steps
+
+
+def create_graph(X, kde, tol=0, density=10):
+    G = nx.Graph()
+    for i in range(len(X)):
+        G.add_node(i)
+    for i in range(len(X)):
+        for j in range(len(X)):
+            if np.linalg.norm(X[i] - X[j]) > 0:
+                samples = np.array([numpy.linspace(X[i][0], X[j][0], density + 1),
+                           numpy.linspace(X[i][1], X[j][1], density + 1)]).T
+                score = kde.score_samples(samples)
+                if all(k >= tol for k in score):
+                    G.add_edge(i, j, weight=np.linalg.norm(X[i] - X[j], ord=2) * score / (density + 1))
+    return G
+
+
+def shortest_path(G):
+    path = nx.shortest_path(G, source=0, target=int(G.number_of_nodes() - 1))
+
+    return path
