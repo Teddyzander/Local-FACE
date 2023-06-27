@@ -1,0 +1,213 @@
+from .helpers.funcs import *
+from scipy import spatial
+import networkx as nx
+
+
+class LocalFace:
+    """
+    Implementation of local_face
+
+    Extracts Feasible Actionable Counterfactual Explanations using only locally acquired information
+
+    Attributes
+    -----------
+    data : n x d dataframe
+        a dataframe of n instances and d features. The data should be a good repsentation of the model
+        and density functions
+    model : object
+        should be a fitted model. Requires a function that gives out a score (not a crisp classifier). The
+        model is only used if a counterfactual point needs to be found
+    dense : object
+        a function that, in some way, measures the probability or likelihood of a point being sampled from
+        the space e.g., kernal density estimation
+
+    """
+
+    def __init__(self, data, model, dense, cf=None, steps=None):
+        self.cf = cf
+        self.steps = steps
+        self.data = data
+        self.model = model
+        self.dense = dense
+        self.path = None
+        self.G = None
+
+    def find_cf(self, x0, k=10, thresh=0.9, mom=3, alpha=0.05):
+        """
+        Find a valid counterfactual by searching through nearby data points using momentum
+        Args:
+            x0: starting point n array
+            k: positive integer of how many neighbours to consider
+            thresh: minimum value of probability classifier to terminate algorithm
+            mom: positive int of number of last steps used to build momentum
+            alpha: positive float of maximum step size when using momentum
+        Returns:
+            steps: n by p array of p steps to get from x0 to a valid counterfactual
+            cf: valid counterfactual (last entry in steps)
+        """
+        steps = np.zeros((2, 2))
+        steps[0] = x0
+        # set up tree for k nearest neighbours
+        tree = spatial.KDTree(self.data)
+
+        # find closes k points to x0
+        close = tree.query(x0, k=k, p=2)[1]
+
+        # find probabilities of closest points
+        vals = self.model.predict_proba(tree.data[close])[:, 1]
+
+        # save best move and delete from tree and rebuild
+        indx = np.argmax(vals)
+        x_hat = tree.data[close[indx]]
+        steps[1] = np.array(tree.data[close[indx]])
+        cf = steps[1]
+        temp = np.delete(tree.data, close[indx], 0)
+        tree = spatial.KDTree(temp)
+
+        # repeat until valid counterfactual is found
+        i = 1
+        while self.model.predict_proba([x_hat])[0, 1] < thresh:
+            # find closes k points to x0
+            nei = tree.query(steps[i], k=k, p=2)
+            close = nei[1]
+
+            # find weighted probabilities of closest points
+            vals = (1 / (1 + nei[0])) * self.model.predict_proba(tree.data[close])[:, 1]
+
+            # save best move and delete from tree and rebuild
+            indx = np.argmax(vals)
+            x_hat = tree.data[close[indx]]
+            best_step = np.array(tree.data[close[indx]])
+
+            # momentum term
+            if mom > 0:
+                if i > mom:
+                    mom_dir = np.zeros(2)
+                    for j in range(i - mom, mom):
+                        mom_dir += steps[j] - steps[j - 1]
+                else:
+                    mom_dir = np.zeros(2)
+                    for j in range(i):
+                        mom_dir += steps[j] - steps[j - 1]
+                mom_dir = mom_dir / mom
+                best_step = 0.5 * (steps[i] - best_step) + 0.5 * mom_dir
+                best_step_len = np.linalg.norm(best_step, 2)
+                if best_step_len > alpha:
+                    best_step = (best_step / best_step_len) * alpha
+                best_step = x_hat + best_step
+
+            # save best step
+            steps = np.append(steps, [best_step], axis=0)
+            temp = np.delete(tree.data, close[indx], 0)
+            tree = spatial.KDTree(temp)
+
+            cf = best_step
+            x_hat = best_step
+            i += 1
+        return steps, cf
+
+    def generate_graph(self, x0, cf, dist, thresh, early=True):
+        """
+        Find best path through data from x0 to counterfactual via query balls of radius dist
+        Args:
+            x0: n array starting point
+            cf: n array counterfactual point
+            data: all tranversible data n by m array
+            dist: maximum distance we can move in a single step
+            thresh: float of threshold of value for function in order to classify a
+            point as a viable counterfactual
+            early: bool for whether to terminate early if a closer counterfactual is found
+
+        Returns: n by p array of p steps to get from x0 to a valid counterfactual and a graph of the steps
+        """
+        xt = x0
+        steps = np.zeros((1, 2))
+        steps[0] = x0
+        # set up tree for k nearest neighbours
+        tree = spatial.KDTree(self.data)
+        i = 1
+        while not np.array_equiv(xt, cf):
+            # check if current point actually meets criteria
+            if self.model.predict_proba([xt])[0, 1] >= thresh and early:
+                print('Better solution located en route')
+                break
+            # get vector of the best direction of travel
+            dir = xt - cf
+            dir_len = np.linalg.norm(dir, ord=2)
+            # find points within dist of x0
+            indx = tree.query_ball_point(xt, dist, p=2)
+
+            # find viable point that is along the path of best direction
+            dot = -np.inf
+            for j in indx:
+                xi = tree.data[j]
+                v = xt - xi
+                v_len = np.linalg.norm(v, ord=2)
+                vdir_len = np.linalg.norm(cf - xi, ord=2)
+                if v_len != 0:
+                    temp = (((1 + (np.dot(dir, v) / (dir_len * v_len))) / 2) *
+                            self.dense.score([(xi + xt) / 2])) / dir_len
+                    if temp > dot:
+                        dot = temp
+                        best = j
+                        """prob = kde.score([xi])
+                        if prob > thresh_p:
+                            dot = temp
+                            best = j"""
+
+            # if we have nowhere to go and we are at the beginning, terminate
+            if len(indx) == 0 and np.array_equiv(xt, x0):
+                print('No CF path found for sphere size {}'.format(dist))
+                break
+
+            if len(indx) == 0:
+                xt = x0
+                steps = np.zeros((1, 2))
+                steps[0] = x0
+
+            # edit tree and save step
+            else:
+                xt = tree.data[best]
+                best_step = np.array(tree.data[best])
+                steps = np.append(steps, [best_step], axis=0)
+                temp = np.delete(tree.data, best, 0)
+                tree = spatial.KDTree(temp)
+            i += 1
+
+        self.steps = steps
+        return steps
+
+    def create_graph(self, tol=0, sample=10):
+        """
+        Create edges between viable nodes and calculate weight
+        Args:
+            tol: minimum probability density for viable path
+            sample: samples over linear connection between Xi and Xj
+
+        Returns: Connected graph
+
+        """
+        self.G = nx.Graph()
+        for i in range(len(self.steps)):
+            self.G.add_node(i)
+        for i in range(len(self.steps)):
+            for j in range(len(self.steps)):
+                if np.linalg.norm(self.steps[i] - self.steps[j]) > 0:
+                    samples = np.array([np.linspace(self.steps[i][0], self.steps[j][0], sample + 1),
+                                        np.linspace(self.steps[i][1], self.steps[j][1], sample + 1)]).T
+                    score = self.dense.score_samples(samples)
+                    if all(k >= tol for k in score):
+                        w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2) # * score / (sample + 1)
+                        self.G.add_edge(i, j, weight=w)
+
+        return self.G
+
+    def shortest_path(self):
+        """
+        Calculate shortest path from factual to counterfactual
+        Returns: shortest path through nodes
+
+        """
+        test = self.G.number_of_nodes()
+        self.path = nx.shortest_path(self.G, source=0, target=int(self.G.number_of_nodes() - 1))
+        return self.path

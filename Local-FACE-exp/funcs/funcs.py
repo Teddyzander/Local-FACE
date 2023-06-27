@@ -197,7 +197,7 @@ def find_cf_mom(x0, data, classifier, k=10, thresh=0.6, mom=0, alpha=0.05):
     steps[0] = np.array(tree.data[close[indx]])
     cf = steps[0]
     temp = np.delete(tree.data, close[indx], 0)
-    tree = spatial.KDTree(list(zip(temp[:, 0], temp[:, 1])))
+    tree2 = spatial.KDTree(data)
 
     # repeat until valid counterfactual is found
     i = 0
