@@ -5,6 +5,7 @@ from local_face.local_face import *
 from local_face.helpers.plotters import *
 from sklearn.neural_network import MLPClassifier
 from sklearn.neighbors import KernelDensity
+import time
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -33,16 +34,33 @@ model = MLPClassifier(hidden_layer_sizes=(14, 11, 8), random_state=1, max_iter=7
 dense = KernelDensity(kernel='gaussian', bandwidth=band_width).fit(X)
 X1 = data[["x1", "x2"]]
 
+start_total = time.time()
 # initialise Local-FACE model
 face = LocalFace(X1, model, dense)
+
 # find a counterfactual
+print('Finding counterfactual x (explore)...')
+start_explore = time.time()
 steps, cf = face.find_cf(factual, k=k, thresh=thresh, mom=3)
+print('Explore time taken: {} seconds'.format(np.round(time.time() - start_explore, 2)))
+print('---------------------------------')
+
 # generate graph nodes through data from factual to counterfactual
-best_steps = face.generate_graph(factual, cf, dist, thresh, early=True)
+print('Creating graph (Exploit)...')
+start_exploit = time.time()
+best_steps, G = face.generate_graph(factual, cf, dist, thresh, early=True)
 # create edges between viable points and calculate the weights
-G = face.create_graph(0, 100, method='strict')
+G = face.create_edges(0, 20, method='strict')
+print('Exploit time taken: {} seconds'.format(np.round(time.time() - start_exploit, 2)))
+print('---------------------------------')
+
 # calculate shortest path through G from factual to counterfactual
+print('Finding shortest path (Enhance)...')
+start_enhance = time.time()
 shortest_path = face.shortest_path()
+print('Enhance time taken: {} seconds'.format(np.round(time.time() - start_enhance, 2)))
+print('---------------------------------')
+print('Total time taken: {} seconds'.format(np.round(time.time() - start_total, 2)))
 
 # plotting procedure
 # plot the data, the decision function, the searched path
@@ -83,7 +101,7 @@ ax[2].annotate("", xy=(0.175, 0.67), xytext=(0.21, 0.5), arrowprops=dict(arrowst
 ax[2].annotate("", xy=(0.28, 0.63), xytext=(0.21, 0.5), arrowprops=dict(arrowstyle="->", lw=2.5, color='black', alpha=.7))
 
 fig.tight_layout()
-plt.savefig("paper_figure_strict.pdf", format='pdf')
+plt.savefig("paper_figure_strict.png", format='png')
 plt.show()
 
 print('stop')

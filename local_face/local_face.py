@@ -125,6 +125,8 @@ class LocalFace:
         steps[0] = x0
         # set up tree for k nearest neighbours
         tree = spatial.KDTree(self.data)
+        G = nx.Graph()
+        G.add_node(0)
         i = 1
         while not np.array_equiv(xt, cf):
             # check if current point actually meets criteria
@@ -164,6 +166,8 @@ class LocalFace:
                 xt = x0
                 steps = np.zeros((1, 2))
                 steps[0] = x0
+                G = nx.network()
+                i = 0
 
             # edit tree and save step
             else:
@@ -172,12 +176,14 @@ class LocalFace:
                 steps = np.append(steps, [best_step], axis=0)
                 temp = np.delete(tree.data, best, 0)
                 tree = spatial.KDTree(temp)
+                G.add_node(i)
             i += 1
 
         self.steps = steps
-        return steps
+        self.G = G
+        return steps, G
 
-    def create_graph(self, tol=0, sample=10, method='strict'):
+    def create_edges(self, tol=0, sample=10, method='strict'):
         """
         Create edges between viable nodes and calculate weight
         Args:
@@ -187,9 +193,6 @@ class LocalFace:
         Returns: Connected graph
 
         """
-        self.G = nx.Graph()
-        for i in range(len(self.steps)):
-            self.G.add_node(i)
         for i in range(len(self.steps)):
             for j in range(len(self.steps)):
                 if np.linalg.norm(self.steps[i] - self.steps[j]) > 0:
@@ -204,7 +207,10 @@ class LocalFace:
                     elif method == 'strict':
                         if all(k >= tol for k in score):
                             test = (np.sum(score) / (sample + 1))
-                            w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2)  / test
+                            if test < tol:
+                                w = 0
+                            else:
+                                w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2)  / test
                             self.G.add_edge(i, j, weight=w)
                     else:
                         print('no method selected')
