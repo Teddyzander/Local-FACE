@@ -1,88 +1,34 @@
 [![License](https://img.shields.io/github/license/xuanxuanxuan-git/facelift)](https://github.com/xuanxuanxuan-git/facelift/blob/main/LICENSE)
-[![arXiv](https://img.shields.io/badge/arXiv-2306.02786-red.svg)](https://arxiv.org/abs/2306.02786)
 
 # Local-FACE 
 
 This repository hosts `Local-FACE` – source code and useful resources for the following paper. 
 
 > **Peaking into the Black-box: Actionable Interventions form Locally Acquired Counterfactual Explanations**
->
->  .
+> 
+> Counterfactuals, coupled with algorithmic recourse, have become a powerful ad-hoc tool to turn artificial intelligence (AI) systems into explainable AI (XAI) systems.
+> The concept is simple: given an individual has a outcome $y$ (the factual), what actions can they take such that their outcome becomes the desired outcome $y^\prime$
+> (the counterfactual). This results in algorithmic recourse that is: (1) solely aligned with the goals of the individual; and (2) simple to constrain and interpret.
+> However, the properties of what amounts to a ``good'' counterfactual are still largely debated, and the act of effectively locating a counterfactual, and subsequently
+> the recourse necessary for a user to change their outcome, is still an open question. Some strategies use gradient driven methods. However, these have been shown to
+> be open to adversarial attacks on carefully created manifolds, leading to unfairness and a lack of robustness, and they also offer no guarantees on the feasibility
+> of the recourse. Other methods are data driven, mostly solving the feasibility problem, but they require access to the entire training data set and thus may violate
+> privacy and expose intellectual property. Here we introduce Local-FACE, a model-agnostic technique that extracts Feasible, Actionable Counterfactual Explanations
+> (FACE) using only locally acquired information in each step. Local-FACE preserves the privacy of users by only exploiting data that it specifically requires in
+> order to construct actionable algorithmic recourse, and protects the model by only offering transparency in regions deemed necessary for the intervention.
 
 ```bibtex
 @article{}
 ```
 
-## Tabular Data Example
+## Algorithm
+![paper_figure_strict](https://github.com/Teddyzander/Local-FACE/assets/49641102/cac787ef-9e76-4f97-b561-3516812efc8d)
 
-The role of geometry in (counterfactual) explainability is captured by the following figure, which demonstrates the diverse characteristics of counterfactual paths for a two-dimensional toy data set with continuous numerical features.
+Local-FACE employs a three step process to locate a counterfactual, collect relevant local information, and then find an optimal path from the factual to the counterfactual.
 
-<p style="text-align:center">
-<img src="vector_spaces/plots/CF_paths_no_bound.png" width="450">
-</p>
-
-> Example of **explanatory multiverse** constructed for tabular data with two continuous (numerical) features.
-> It shows various types of **counterfactual path geometry** – their *affinity*, *branching*, *divergence* and *convergence*.
-> Each journey terminates in a (possibly the same or similar) counterfactual explanation but characteristics of the steps leading there make some explanations more attractive targets, e.g., by giving the explainee more agency through multiple actionable choices towards the end of a path.
-
-When considered in *isolation*, these paths shown in the figure above have the following properties:
-
-- **B** is short but terminates close to a decision boundary, thus carries high uncertainty;
-- **A** while longer and leading to a high-confidence region, it lacks data along its journey, which signals that it may be infeasible;
-- **C** addresses the shortcomings of A, but it terminates in an area of high instability (compared to D, E<sub>i</sub>, F, G & H);
-- **G & H** also do not exhibit the deficiencies of A, but they lead to an area with a high error rate;
-- **D & F** have all the desired properties, but they require the most travel; and
-- **E<sub>i</sub>** are feasible, but they are *incomplete* by themselves.
-
-To compose richer explanations, we introduce the concept of *explanatory multiverse*, which allows for *spatially-aware counterfactual explainability*.
-Our approach encompasses all the possible counterfactual paths and helps to navigate, reason about and compare the *geometry* of these journeys – their affinity, branching, divergence and possible future convergence.
-
-## MNIST Example
-
-To run the example:
-
-- instal Python dependencies with `pip install -r requirements.txt`;
-- place the dataset files in `/data/raw_data/`; and
-- run `python run_explainer.py` with the default configuration.
-
-The code to generate counterfactual explanations for the MNIST dataset is available in [`mnist_example.ipynb`](examples/mnist_example.ipynb).
-The following figure demonstrates counterfactual pathfinding in the MNIST dataset and the branching factors of these paths.
-
-<p style="text-align:center">
-<img src="examples/figures/mnist.png" width="450">
-</p>
-
-> Example counterfactual journeys identified in the MNIST data set of handwritten digits. Paths 1 (blue) and 2 (green) explain an instance $\mathring{x}$ classified as $\mathring{y} = 1$ for the counterfactual class $\check{y} = 9$.
-> Paths leading to alternative classification outcomes are also possible (shown in grey).
-> Path 1 is shorter than Path 2 at the expense of explainees' agency – which is reflected in its smaller branching factor – therefore switching to alternative paths leading to different classes is easier, i.e., less costly in terms of distance.
-
-## Hyper-parameters
-
-The hyper-parameters are defined in the [`params.yaml`](facelift/library/params.yaml) file.
-(Command line configuration will be implemented in future releases.)
-
-## Datasets
-
-### MNIST
-
-```
-distance_threshold: 6.1
-prediction_threshold: 0.6
-penalty_term: 1.1
-
-directed: True
-distance_function: l2
-method: knn
-knn:
-  n_neighbours: 5
-
-start_point_idx: 1
-target_class: 9
-```
-
-### HELOC
-
-To use tabular dataset, we first need to do preprocessing:
-
-- one-hot encoding of categorical features; and
-- normalisation.
+### (1) Explore
+The algorithm searches the decision manifold locally using k nearest neighbours and momentum/inertia to find a point such that f(x) is above a certain tolerance
+### (2) Exploit
+Armed with knowledge as to the location of the counterfactual, the algorithm searches the dataset in the general direction of the counterfactual and constructs a graph (V,E,W) where vertices V are only connected if they fulfil a probability density criteria (strict or average). Edges are weighted by distance and density.
+### (3) Enhance
+The optimal path through the graph is found.
