@@ -31,6 +31,7 @@ class LocalFace:
         self.dense = dense
         self.path = None
         self.G = None
+        self.prob = None
 
     def find_cf(self, x0, k=10, thresh=0.9, mom=3, alpha=0.05):
         """
@@ -106,14 +107,13 @@ class LocalFace:
             i += 1
         return steps, cf
 
-    def generate_graph(self, x0, cf, dist, thresh, early=True):
+    def generate_graph(self, x0, cf, k, thresh, tol, sample, method='strict', early=True):
         """
         Find best path through data from x0 to counterfactual via query balls of radius dist
         Args:
             x0: n array starting point
             cf: n array counterfactual point
-            data: all tranversible data n by m array
-            dist: maximum distance we can move in a single step
+            k: k-nn parameter
             thresh: float of threshold of value for function in order to classify a
             point as a viable counterfactual
             early: bool for whether to terminate early if a closer counterfactual is found
@@ -137,18 +137,18 @@ class LocalFace:
             dir = xt - cf
             dir_len = np.linalg.norm(dir, ord=2)
             # find points within dist of x0
-            indx = tree.query_ball_point(xt, dist, p=2)
+            indx = tree.query(xt, k, p=2)
 
             # find viable point that is along the path of best direction
             dot = -np.inf
-            for j in indx:
+            for j in indx[1]:
                 xi = tree.data[j]
                 v = xt - xi
                 v_len = np.linalg.norm(v, ord=2)
                 vdir_len = np.linalg.norm(cf - xi, ord=2)
                 if v_len != 0:
-                    temp = (((1 + (np.dot(dir, v) / (dir_len * v_len))) / 2) *
-                            self.dense.score([(xi + xt) / 2])) / dir_len
+                    temp = (((1 + (np.dot(dir, v) / (dir_len * v_len))) / 2) * self.dense.score([(xi + xt) / 2])) / dir_len
+                    # temp = ((1 + (np.dot(dir, v) / (dir_len * v_len))) / 2) / vdir_len
                     if temp > dot:
                         dot = temp
                         best = j
@@ -159,15 +159,16 @@ class LocalFace:
 
             # if we have nowhere to go and we are at the beginning, terminate
             if len(indx) == 0 and np.array_equiv(xt, x0):
-                print('No CF path found for sphere size {}'.format(dist))
+                print('No CF path found for {}-NN}'.format(k))
                 break
 
             if len(indx) == 0:
                 xt = x0
                 steps = np.zeros((1, 2))
                 steps[0] = x0
-                G = nx.network()
+                G = nx.Graph()
                 i = 0
+                G.add_node(0)
 
             # edit tree and save step
             else:
@@ -177,6 +178,20 @@ class LocalFace:
                 temp = np.delete(tree.data, best, 0)
                 tree = spatial.KDTree(temp)
                 G.add_node(i)
+                # find and calculate edges
+                for l in range(i):
+                    samples = np.array([np.linspace(steps[i][0], steps[l][0], sample + 1),
+                                        np.linspace(steps[i][1], steps[l][1], sample + 1)]).T
+                    score = np.exp(self.dense.score_samples(samples))
+                    test = np.exp(np.sum(score) / (sample + 1))
+                    if method == 'avg':
+                        w = np.linalg.norm(steps[i] - steps[l], ord=2) * test
+                        G.add_edge(i, l, weight=w)
+                    elif method == 'strict':
+                        if all(k >= tol for k in score):
+                            w = np.linalg.norm(steps[i] - steps[l], ord=2) * test
+                            G.add_edge(i, l, weight=w)
+
             i += 1
 
         self.steps = steps
@@ -193,24 +208,20 @@ class LocalFace:
         Returns: Connected graph
 
         """
+        self.prob = tol
         for i in range(len(self.steps)):
             for j in range(len(self.steps)):
                 if np.linalg.norm(self.steps[i] - self.steps[j]) > 0:
                     samples = np.array([np.linspace(self.steps[i][0], self.steps[j][0], sample + 1),
                                         np.linspace(self.steps[i][1], self.steps[j][1], sample + 1)]).T
-                    score = self.dense.score_samples(samples)
+                    score = np.exp(self.dense.score_samples(samples))
+                    test = np.exp(np.sum(score) / (sample + 1))
                     if method == 'avg':
-                        test = (np.sum(score) / (sample + 1))
-                        if test > tol:
-                            w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2) / test
-                            self.G.add_edge(i, j, weight=w)
+                        w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2) * test
+                        self.G.add_edge(i, j, weight=w)
                     elif method == 'strict':
                         if all(k >= tol for k in score):
-                            test = (np.sum(score) / (sample + 1))
-                            if test < tol:
-                                w = 0
-                            else:
-                                w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2)  / test
+                            w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2) * test
                             self.G.add_edge(i, j, weight=w)
                     else:
                         print('no method selected')
@@ -224,6 +235,15 @@ class LocalFace:
         Returns: shortest path through nodes
 
         """
-        test = self.G.number_of_nodes()
-        self.path = nx.shortest_path(self.G, source=0, target=int(self.G.number_of_nodes() - 1))
+        success = False
+        prob = self.prob
+        while not success:
+            try:
+                self.path = nx.shortest_path(self.G, source=0, target=int(self.G.number_of_nodes() - 1))
+                success = True
+            except:
+                print('No path found, lowering probability density')
+                prob = prob - 0.1
+                self.create_edges(tol=prob)
+        print('Completed with density probability: {}'.format(prob))
         return self.path
