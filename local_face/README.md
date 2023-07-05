@@ -22,7 +22,6 @@ This repository hosts `Local-FACE` – source code and useful resources for the 
 ```
 
 ## Algorithm
-![paper_figure_strict](https://github.com/Teddyzander/Local-FACE/assets/49641102/cac787ef-9e76-4f97-b561-3516812efc8d)
 
 Local-FACE employs a three step process to locate a counterfactual, collect relevant local information, and then find an optimal path from the factual to the counterfactual.
 
@@ -32,3 +31,10 @@ The algorithm searches the decision manifold locally using k nearest neighbours 
 Armed with knowledge as to the location of the counterfactual, the algorithm searches the dataset in the general direction of the counterfactual and constructs a graph (V,E,W) where vertices V are only connected if they fulfil a probability density criteria (strict or average). Edges are weighted by distance and density.
 ### (3) Enhance
 The optimal path through the graph is found.
+
+### Three Steps
+![image](https://github.com/Teddyzander/Local-FACE/assets/49641102/0cbbb95e-ef9c-4cb1-a439-d9e817535c9c)
+
+### FACE vs Local-FACE
+![comparison](https://github.com/Teddyzander/Local-FACE/assets/49641102/38140e21-7484-4d56-b593-5eff1970952b)
+
