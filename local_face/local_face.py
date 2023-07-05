@@ -121,6 +121,7 @@ class LocalFace:
         Returns: n by p array of p steps to get from x0 to a valid counterfactual and a graph of the steps
         """
         xt = x0
+        self.prob = tol
         steps = np.zeros((1, 2))
         steps[0] = x0
         # set up tree for k nearest neighbours
@@ -202,26 +203,27 @@ class LocalFace:
         """
         Create edges between viable nodes and calculate weight
         Args:
-            tol: minimum probability density for viable path
-            sample: samples over linear connection between Xi and Xj
-
         Returns: Connected graph
-
         """
-        self.prob = tol
+        """self.G = nx.Graph()
         for i in range(len(self.steps)):
-            for j in range(len(self.steps)):
+            self.G.add_node(i)"""
+
+        for i in range(len(self.steps)):
+            for j in range(i):
                 if np.linalg.norm(self.steps[i] - self.steps[j]) > 0:
                     samples = np.array([np.linspace(self.steps[i][0], self.steps[j][0], sample + 1),
                                         np.linspace(self.steps[i][1], self.steps[j][1], sample + 1)]).T
-                    score = np.exp(self.dense.score_samples(samples))
-                    test = np.exp(np.sum(score) / (sample + 1))
+                    score = self.dense.score_samples(samples)
                     if method == 'avg':
-                        w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2) * test
-                        self.G.add_edge(i, j, weight=w)
+                        test = (np.sum(score) / (sample + 1))
+                        if test > tol:
+                            w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2) / test
+                            self.G.add_edge(i, j, weight=w)
                     elif method == 'strict':
                         if all(k >= tol for k in score):
-                            w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2) * test
+                            test = (np.sum(score) / (sample + 1))
+                            w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2) / test
                             self.G.add_edge(i, j, weight=w)
                     else:
                         print('no method selected')

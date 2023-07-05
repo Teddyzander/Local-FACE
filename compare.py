@@ -12,19 +12,19 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # parameters for locating counterfactual and path
-k = 20
+k = 15
 thresh = 0.95
 dist = 0.05
-line = 25
+line = 10
 # parameters for data generation
 seed = 10
 samples = 1000
-noise = 0.1
+noise = 0.15
 # parameters for model creation
-band_width = 0.025
+band_width = 0.01
 
 # create data
-generator = datasets.create_blobs  # get data generator
+generator = datasets.creat_custom  # get data generator
 data = generator(samples, seed, noise)  # generate data
 X = data.iloc[:, :2]  # ensure data is 2d
 y = data.y  # get target
@@ -35,9 +35,9 @@ dense = KernelDensity(kernel='gaussian', bandwidth=band_width).fit(X)
 X1 = data[["x1", "x2"]]
 
 # the factual point
-factual = 264
+factual = 262
 # the factual point
-cf = 250
+cf = 269
 
 start_total = time.time()
 # initialise Local-FACE model
@@ -48,11 +48,10 @@ test = dense.score([Xs[factual, :]])
 # generate graph nodes through data from factual to counterfactual
 print(r'Creating graph G (Exploit)...')
 start_exploit = time.time()
-best_steps, G = face.generate_graph(Xs[factual, :], Xs[cf, :], k, thresh, early=False)
+best_steps, G = face.generate_graph(Xs[factual, :], Xs[cf, :], k, thresh, test, line, early=False, method='strict')
 # create edges between viable points and calculate the weights
 print('Exploit time taken: {} seconds'.format(np.round(time.time() - start_exploit, 2)))
 print('---------------------------------')
-
 # calculate shortest path through G from factual to counterfactual
 print(r"Finding shortest path from x to x' through G (Enhance)...")
 start_enhance = time.time()
@@ -78,11 +77,12 @@ ax[0] = plot_dataset(ax[0], data, size=5)
 ax[0] = plot_graph(ax[0], X1, model, best_steps, G, shortest_path)
 ax[0].set_xlim([0, 1])
 ax[0].set_ylim([0, 1])
-ax[0].plot(best_steps[shortest_path, 0], best_steps[shortest_path, 1], '-g', label='Local-FACE', linewidth=2)
+ax[0].plot(best_steps[shortest_path, 0], best_steps[shortest_path, 1], '-g', linewidth=2)
 ax[0].plot(Xs[shortest_path1, 0], Xs[shortest_path1, 1], '-b', label='FACE', linewidth=2)
-ax[0].plot(Xs[factual, 0], Xs[factual, 1], 'go', label='factual')
+ax[0].plot(Xs[factual, 0], Xs[factual, 1], 'go', label='x')
 ax[0].plot(best_steps[-1, 0], best_steps[-1, 1], '*b', label='$x^\prime$', markersize=12, alpha=0.7, markeredgecolor='white')
 ax[0].title.set_text('Model')
+ax[0].legend(loc='lower left', fancybox=True, framealpha=0.2, prop={'size': 16})
 
 ax[1] = plot_density(ax[1], X1, dense, levels=5)
 ax[1] = plot_dataset(ax[1], data, size=5)
