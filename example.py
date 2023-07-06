@@ -1,13 +1,10 @@
 import local_face.helpers.datasets as datasets
-import matplotlib.pyplot as plt
-import numpy as np
 from local_face.local_face import *
 from local_face.helpers.plotters import *
 from sklearn.neural_network import MLPClassifier
 from sklearn.neighbors import KernelDensity
 import time
 import warnings
-import networkx.algorithms.approximation as nx_app
 
 warnings.filterwarnings("ignore")
 graph = False
