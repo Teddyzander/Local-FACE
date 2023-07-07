@@ -26,9 +26,14 @@ band_width = 0.025
 # import data
 X, y = preprocess.load_dataset('mimic')
 
+factual = np.array(X.loc[y['outcome'] == 0].sample(n=1, random_state=seed))[0]
+
+
+X = np.array(X)
+
+#X = X[['bun', 'hco3']]
+
 # the factual point -- contstrain to only negative outcome samples, i.e. y outcome == 0
-#print(X.loc[y['outcome'] == 0].head())
-factual = X.sample(n=1, random_state=seed)
 print('Randomly selected factual: \n', factual)
 
 #y = np.ravel(y)
@@ -46,7 +51,7 @@ face = LocalFace(X, model, dense)
 # find a counterfactual
 print(r"Finding counterfactual x' (explore)...")
 start_explore = time.time()
-steps, cf = face.find_cf(factual, k=k, thresh=thresh, mom=3)
+steps, cf = face.find_cf(factual, k=k, thresh=thresh, mom=0)
 print('Explore time taken: {} seconds'.format(np.round(time.time() - start_explore, 2)))
 print('---------------------------------')
 

@@ -46,13 +46,18 @@ class LocalFace:
             steps: n by p array of p steps to get from x0 to a valid counterfactual
             cf: valid counterfactual (last entry in steps)
         """
-        steps = np.zeros((2, 2))
+
+        steps = np.zeros((2, len(x0))) # Adaptable shape
         steps[0] = x0
+
         # set up tree for k nearest neighbours
         tree = spatial.KDTree(self.data)
 
-        # find closes k points to x0
+        # find closest k points to x0
         close = tree.query(x0, k=k, p=2)[1]
+
+        print(close)
+        print(tree.data[close])
 
         # find probabilities of closest points
         vals = self.model.predict_proba(tree.data[close])[:, 1]
@@ -122,7 +127,7 @@ class LocalFace:
         """
         xt = x0
         self.prob = tol
-        steps = np.zeros((1, 2))
+        steps = np.zeros((1, len(x0)))
         steps[0] = x0
         # set up tree for k nearest neighbours
         tree = spatial.KDTree(self.data)
@@ -143,11 +148,16 @@ class LocalFace:
             # find viable point that is along the path of best direction
             dot = -np.inf
             for j in indx[1]:
-                xi = tree.data[j]
+                xi = np.array(tree.data[j])
+                print(xi)
                 v = xt - xi
                 v_len = np.linalg.norm(v, ord=2)
                 vdir_len = np.linalg.norm(cf - xi, ord=2)
                 if v_len != 0:
+                    print(dir)
+                    print(v)
+                    print(np.dot(dir, v))
+                    print((xi + xt))
                     temp = (((1 + (np.dot(dir, v) / (dir_len * v_len))) / 2) * self.dense.score([(xi + xt) / 2])) / dir_len
                     # temp = ((1 + (np.dot(dir, v) / (dir_len * v_len))) / 2) / vdir_len
                     if temp > dot:
