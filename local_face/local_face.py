@@ -1,5 +1,6 @@
 from .helpers.funcs import *
 from scipy import spatial
+from sklearn.neighbors import KernelDensity
 import networkx as nx
 
 

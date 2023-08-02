@@ -90,11 +90,11 @@ if not graph:
     ax[2].plot(best_steps[shortest_path, 0], best_steps[shortest_path, 1], '-g', label='Enhance', linewidth=2)
     ax[2].plot(factual[0], factual[1], 'go', label='factual')
     ax[2].plot(best_steps[-1, 0], best_steps[-1, 1], '*b', label='$x^\prime$', markersize=12, alpha=0.7, markeredgecolor='white')
-    ax[2].plot([factual[0], best_steps[-1, 0]],
+    """ax[2].plot([factual[0], best_steps[-1, 0]],
                [factual[1], best_steps[-1, 1]], '-r', linewidth=2)
     ax[2].plot([best_steps[shortest_path[1], 0], best_steps[shortest_path[3], 0]],
                [best_steps[shortest_path[1], 1], best_steps[shortest_path[3], 1]], '-r', label='illegal edge', linewidth=2)
-
+"""
     ax[2].title.set_text('Enhance')
     ax[2].annotate("", xy=(0.21, 0.375), xytext=(0.21, 0.45), arrowprops=dict(arrowstyle="->", lw=2.5, color='black', alpha=.7))
     ax[2].text(0.21, 0.475, 'not allowed', va='center', ha='center',

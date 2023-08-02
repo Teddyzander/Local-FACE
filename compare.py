@@ -19,9 +19,9 @@ line = 10
 # parameters for data generation
 seed = 10
 samples = 1000
-noise = 0.15
+noise = 0.08
 # parameters for model creation
-band_width = 0.01
+band_width = 0.025
 
 # create data
 generator = datasets.creat_custom  # get data generator
@@ -30,14 +30,14 @@ X = data.iloc[:, :2]  # ensure data is 2d
 y = data.y  # get target
 
 # train model and density estimator using training data
-model = MLPClassifier(hidden_layer_sizes=(14, 11, 8), random_state=1, max_iter=700).fit(X, y)
+model = MLPClassifier(hidden_layer_sizes=(20, 20, 20), random_state=1, max_iter=700).fit(X, y)
 dense = KernelDensity(kernel='gaussian', bandwidth=band_width).fit(X)
 X1 = data[["x1", "x2"]]
 
 # the factual point
-factual = 262
+factual = 287
 # the factual point
-cf = 269
+cf = 24
 
 start_total = time.time()
 # initialise Local-FACE model

@@ -124,5 +124,5 @@ def plot_graph(ax, data, model, steps, G, shortest):
             ax.plot([steps[i, 0], steps[j[1], 0]],
                     [steps[i, 1], steps[j[1], 1]], 'ko', linestyle="--", linewidth = 0.1, alpha=0.25)
 
-    ax.plot(steps[shortest, 0], steps[shortest, 1], '-g', label='Enhance', linewidth=3, alpha=1)
+    ax.plot(steps[shortest, 0], steps[shortest, 1], '-g', label='Local-FACE', linewidth=3, alpha=1)
     return ax
