@@ -1,3 +1,5 @@
+import numpy as np
+
 from .helpers.funcs import *
 from scipy import spatial
 from sklearn.neighbors import KernelDensity
@@ -182,8 +184,13 @@ class LocalFace:
                 G.add_node(i)
                 # find and calculate edges
                 for l in range(i):
-                    samples = np.array([np.linspace(steps[i][0], steps[l][0], sample + 1),
+                    test = np.array([np.linspace(steps[i][0], steps[l][0], sample + 1),
                                         np.linspace(steps[i][1], steps[l][1], sample + 1)]).T
+                    samples = np.zeros((len(steps[i]), sample + 1))
+                    for u in range(len(samples)):
+                        samples[u] = np.linspace(steps[i][u], steps[l][u], sample + 1)
+                    samples = np.array(samples).T
+
                     score = np.exp(self.dense.score_samples(samples))
                     test = np.exp(np.sum(score) / (sample + 1))
                     if method == 'avg':
