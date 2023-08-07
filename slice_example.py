@@ -16,8 +16,8 @@ warnings.filterwarnings("ignore")
 def dist(a, b, eps):
     b = b.reshape(a.shape)
     ans = np.linalg.norm(a - b)
-    """if ans > eps:
-        ans = 999"""
+    if ans > eps:
+        ans = 999
     return ans
 
 
@@ -33,7 +33,7 @@ def obj(x_prime, x, y_prime, model, dense, eps=0.1):
     ans = (pred - y_prime) ** 2 + length**2 + (1-den)**2
     return ans
 
-def obj2(x_prime, x, y_prime, model, eps=0.1):
+def obj2(x_prime, x, y_prime, model, eps=9999999):
     pred = model.predict_proba([x_prime])[0, 1]
     length = dist(x, x_prime, eps)
     ans = (pred - y_prime) ** 2 + length
@@ -48,7 +48,7 @@ k = 5
 thresh = 0.95
 # parameters for data generation
 seed = 10
-samples = 300
+samples = 1000
 noise = 0.15
 # parameters for model creation
 band_width = 0.02
@@ -74,6 +74,7 @@ X1 = data[["x1", "x2"]]
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(18, 12), sharey=True)
 ax = plot_dataset(ax, data)
 ax = plot_decision_boundary(ax, X1, model)
+ax = plot_decision_boundary(ax, X1, model, alpha=0.6)
 
 x0 = np.array([0.1, 0.5])
 k=25
@@ -94,7 +95,7 @@ for i in range(k):
 x0 = np.array([0.1, 0.5])
 y = 1
 result = optimize.minimize(obj2, x0.reshape(-1, 1),
-                            args=(x0.reshape(-1, 1), y, model, 0.1))
+                            args=(x0.reshape(-1, 1), y, model))
 ax.annotate('',
                   xytext=(x0[0], x0[1]),
                   xy=(result['x'][0], result['x'][1]),
