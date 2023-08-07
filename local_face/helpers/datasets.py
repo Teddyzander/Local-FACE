@@ -64,7 +64,7 @@ def constrain_search(data, cons):
     if len(cons) != data.shape[1]:
         raise ValueError("Must pass a constraint for each feature")
     for i, con1 in enumerate(cons):
-        if con1 is not None:
+        if con1 is not None or []:
             for con2 in con1:
                 condition = "con_data.drop(con_data[con_data.iloc[:, i]" + con2 + "].index, inplace=True)"
                 exec(condition)
