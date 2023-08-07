@@ -15,13 +15,11 @@ graph = False
 
 # parameters for locating counterfactual and path
 k = 5
-thresh = 0.95
+thresh = 0.9
 dist = 0.1
-# parameters for data generation
-seed = 10
-samples = 300
-noise = 0.15
-# parameters for model creation
+seed = 39
+
+# parameters for density model creation
 band_width = 0.025
 
 features = ['airway', 'fio2', 'spo2_min',
@@ -58,7 +56,7 @@ print('Randomly selected factual: \n', factual)
 X_train = np.array(X_train)
 dense = KernelDensity(kernel='gaussian', bandwidth=band_width).fit(X_train)
 
-print(factual_selector('mimic', features, model))
+# print(factual_selector('mimic', features, model))
 
 
 start_total = time.time()
@@ -99,7 +97,7 @@ print('Total time taken: {} seconds'.format(
 
 # plotting procedure
 # plot the data, the decision function, the searched path
-if not graph:
+if graph:
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(18, 5), sharey=True)
     # finding counterfactual
     ax[0] = plot_dataset(ax[0], data)

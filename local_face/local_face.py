@@ -50,7 +50,7 @@ class LocalFace:
             cf: valid counterfactual (last entry in steps)
         """
 
-        steps = np.zeros((2, len(x0))) # Adaptable shape
+        steps = np.zeros((2, len(x0)))  # Adaptable shape
         steps[0] = x0
 
         # set up tree for k nearest neighbours
@@ -81,7 +81,8 @@ class LocalFace:
             close = nei[1]
 
             # find weighted probabilities of closest points
-            vals = (1 / (1 + nei[0])) * self.model.predict_proba(tree.data[close])[:, 1]
+            vals = (1 / (1 + nei[0])) * \
+                self.model.predict_proba(tree.data[close])[:, 1]
 
             # save best move and delete from tree and rebuild
             indx = np.argmax(vals)
@@ -152,16 +153,17 @@ class LocalFace:
             dot = -np.inf
             for j in indx[1]:
                 xi = np.array(tree.data[j])
-                print(xi)
+                # print(xi)
                 v = xt - xi
                 v_len = np.linalg.norm(v, ord=2)
                 vdir_len = np.linalg.norm(cf - xi, ord=2)
                 if v_len != 0:
-                    print(dir)
-                    print(v)
-                    print(np.dot(dir, v))
-                    print((xi + xt))
-                    temp = (((1 + (np.dot(dir, v) / (dir_len * v_len))) / 2) * self.dense.score([(xi + xt) / 2])) / dir_len
+                    # print(dir)
+                    # print(v)
+                    # print(np.dot(dir, v))
+                    # print((xi + xt))
+                    temp = (((1 + (np.dot(dir, v) / (dir_len * v_len))) / 2)
+                            * self.dense.score([(xi + xt) / 2])) / dir_len
                     # temp = ((1 + (np.dot(dir, v) / (dir_len * v_len))) / 2) / vdir_len
                     if temp > dot:
                         dot = temp
@@ -195,10 +197,11 @@ class LocalFace:
                 # find and calculate edges
                 for l in range(i):
                     test = np.array([np.linspace(steps[i][0], steps[l][0], sample + 1),
-                                        np.linspace(steps[i][1], steps[l][1], sample + 1)]).T
+                                     np.linspace(steps[i][1], steps[l][1], sample + 1)]).T
                     samples = np.zeros((len(steps[i]), sample + 1))
                     for u in range(len(samples)):
-                        samples[u] = np.linspace(steps[i][u], steps[l][u], sample + 1)
+                        samples[u] = np.linspace(
+                            steps[i][u], steps[l][u], sample + 1)
                     samples = np.array(samples).T
 
                     score = np.exp(self.dense.score_samples(samples))
@@ -208,7 +211,8 @@ class LocalFace:
                         G.add_edge(i, l, weight=w)
                     elif method == 'strict':
                         if all(k >= tol for k in score):
-                            w = np.linalg.norm(steps[i] - steps[l], ord=2) * test
+                            w = np.linalg.norm(
+                                steps[i] - steps[l], ord=2) * test
                             G.add_edge(i, l, weight=w)
 
             i += 1
@@ -223,25 +227,68 @@ class LocalFace:
         Args:
         Returns: Connected graph
         """
-        """self.G = nx.Graph()
-        for i in range(len(self.steps)):
-            self.G.add_node(i)"""
-
         for i in range(len(self.steps)):
             for j in range(i):
                 if np.linalg.norm(self.steps[i] - self.steps[j]) > 0:
                     samples = np.array([np.linspace(self.steps[i][0], self.steps[j][0], sample + 1),
-                                        np.linspace(self.steps[i][1], self.steps[j][1], sample + 1)]).T
-                    score = self.dense.score_samples(samples)
+                                        np.linspace(
+                                            self.steps[i][1], self.steps[j][1], sample + 1),
+                                        np.linspace(
+                                            self.steps[i][2], self.steps[j][2], sample + 1),
+                                        np.linspace(
+                                            self.steps[i][3], self.steps[j][3], sample + 1),
+                                        np.linspace(
+                                            self.steps[i][4], self.steps[j][4], sample + 1),
+                                        np.linspace(
+                                            self.steps[i][5], self.steps[j][5], sample + 1),
+                                        np.linspace(
+                                            self.steps[i][6], self.steps[j][6], sample + 1),
+                                        np.linspace(
+                                            self.steps[i][7], self.steps[j][7], sample + 1),
+                                        np.linspace(
+                                            self.steps[i][8], self.steps[j][8], sample + 1),
+                                        np.linspace(
+                                            self.steps[i][9], self.steps[j][9], sample + 1),
+                                        np.linspace(
+                                            self.steps[i][10], self.steps[j][10], sample + 1),
+                                        np.linspace(
+                                            self.steps[i][11], self.steps[j][11], sample + 1),
+                                        np.linspace(
+                                            self.steps[i][12], self.steps[j][12], sample + 1),
+                                        np.linspace(
+                                            self.steps[i][13], self.steps[j][13], sample + 1),
+                                        np.linspace(
+                                            self.steps[i][14], self.steps[j][14], sample + 1),
+                                        np.linspace(
+                                            self.steps[i][15], self.steps[j][15], sample + 1),
+                                        np.linspace(
+                                            self.steps[i][16], self.steps[j][16], sample + 1),
+                                        np.linspace(
+                                            self.steps[i][17], self.steps[j][17], sample + 1),
+                                        np.linspace(
+                                            self.steps[i][18], self.steps[j][18], sample + 1),
+                                        np.linspace(
+                                            self.steps[i][19], self.steps[j][19], sample + 1),
+                                        np.linspace(
+                                            self.steps[i][20], self.steps[j][20], sample + 1),
+                                        np.linspace(
+                                            self.steps[i][21], self.steps[j][21], sample + 1),
+                                        ]).T
+
+                    # score = self.dense.score_samples(samples)
+                    score = np.exp(self.dense.score_samples(samples))
+
                     if method == 'avg':
                         test = (np.sum(score) / (sample + 1))
                         if test > tol:
-                            w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2) / test
+                            w = np.linalg.norm(
+                                self.steps[i] - self.steps[j], ord=2) / test
                             self.G.add_edge(i, j, weight=w)
                     elif method == 'strict':
                         if all(k >= tol for k in score):
                             test = (np.sum(score) / (sample + 1))
-                            w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2) / test
+                            w = np.linalg.norm(
+                                self.steps[i] - self.steps[j], ord=2) / test
                             self.G.add_edge(i, j, weight=w)
                     else:
                         print('no method selected')
@@ -257,13 +304,16 @@ class LocalFace:
         """
         success = False
         prob = self.prob
+        threshold_reduction = 0.1
         while not success:
             try:
-                self.path = nx.shortest_path(self.G, source=0, target=int(self.G.number_of_nodes() - 1))
+                self.path = nx.shortest_path(
+                    self.G, source=0, target=int(self.G.number_of_nodes() - 1))
                 success = True
             except:
-                print('No path found, lowering probability density')
-                prob = prob - 0.1
-                self.create_edges(tol=prob)
+                print(
+                    f'No path found, lowering probability density from {prob:.2f} to {(prob - threshold_reduction):.2f}')
+                prob = prob - threshold_reduction
+                self.create_edges(tol=prob, method='avg')
         print('Completed with density probability: {}'.format(prob))
         return self.path
