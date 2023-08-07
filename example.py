@@ -27,6 +27,9 @@ data = generator(samples, seed, noise)  # generate data
 X = data.iloc[:, :2]  # ensure data is 2d
 y = data.y  # get target
 
+con_X = datasets.constrain_search(X, [[">0.4"], []])
+con_X['y'] = data.y
+
 # train model and density estimator using training data
 model = MLPClassifier(hidden_layer_sizes=(14, 11, 8), random_state=1, max_iter=700).fit(X, y)
 dense = KernelDensity(kernel='gaussian', bandwidth=band_width).fit(X)
@@ -66,7 +69,7 @@ print('Total time taken: {} seconds'.format(np.round(time.time() - start_total, 
 if not graph:
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(18, 5), sharey=True)
     # finding counterfactual
-    ax[0] = plot_dataset(ax[0], data)
+    ax[0] = plot_dataset(ax[0], con_X)
     ax[0] = plot_decision_boundary(ax[0], X1, model)
     ax[0].plot(factual[0], factual[1], 'go', label='factual')
     ax[0].plot(steps[:, 0], steps[:, 1], '-y', label='Explore', linewidth=3)
