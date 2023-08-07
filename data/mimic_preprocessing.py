@@ -1,14 +1,13 @@
-from sklearn.neural_network import MLPClassifier
 import pandas as pd
-import os
 import numpy as np
 
 
-def load_dataset(dataset_name):
-    """Load the dataset from the csv file into a dataframe.
+def load_dataset(dataset_name, features, test=True):
+    """Load the RFD dataset from the csv file into a dataframe.
 
     Args:
         dataset_name (str): dataset name
+        test (bool): which split to load, train or test
 
     Returns:
         X: features of all instances in a dataframe
@@ -16,51 +15,57 @@ def load_dataset(dataset_name):
     """
     dataset_df = pd.DataFrame()
 
-    # load HELOC dataset
+    # load rfd dataset
     if dataset_name == "mimic":
-        dataset_file_path = ("data/data/mimic_data.csv")
-        dataset_df = pd.read_csv(dataset_file_path, header=0, engine="python")
-        X, y = process_mimic(dataset_df)
+        if test == True:
+            dataset_file_path = ("rfd_model/results/test_data.csv")
+        else:
+            dataset_file_path = ("rfd_model/results/training_data.csv")
+        dataset_df = pd.read_csv(dataset_file_path,
+                                 # header=0,
+                                 engine="python")
+        X = dataset_df[features]
+        y = dataset_df['outcome']
 
     return X, y
 
 
-def process_mimic(data_df):
-    """Delete instances that have missing fields (-9) across all their features.
+def factual_selector(dataset, features, model, target=''):
+    '''
+    More informed choice of factual
+    Can include factual with false negatives
 
     Args:
-        data_df (DataFrame): a dataframe file with raw input
+        dataset (str): 'mimic'
+        features
+        model
+        target (str): optional 'fn', 'fp'
 
     Returns:
-        X: features of all data instances in a dataframe (features are not normalised)
-        y: labels of all data instances as a numpy array
-    """
+        factual: randomly selected patient
 
-    X = data_df.iloc[:, 1:-2]
-    y = data_df.iloc[:, -1:]  # 1 = ready for discharge
+    '''
+    # Load dataset
+    X, y = load_dataset(dataset, features)
 
-    feature_names = X.columns
-    num_features = len(feature_names)
+    # Make predictions on X
+    pred = model.predict(X.to_numpy())
 
-    return X, y
+    # Compare predictions to reality
+    df = pd.DataFrame()
+    df['y_true'] = y.tolist()
+    df['y_pred'] = pred.tolist()
+    print(df)
 
+    comp = np.empty(len(y))
+    for id, patient in enumerate(y):
+        if patient == pred[id]:
+            print('matches')
+            np.append(comp, 1)
+        else:
+            print("doesn't match")
+            np.append(comp, 0)
 
-X, y = load_dataset('mimic')
+    # Now select factual
 
-params = {
-    # "hidden_layer_sizes": (30, 10, ),
-    # "solver": "adam",
-    # "activation": "relu",
-    # "alpha": 1e-4,
-    "max_iter": 5000,
-}
-
-
-model = MLPClassifier(**params)
-
-model.fit(X, np.ravel(y))
-
-
-print(model.predict(X[:10]))
-
-print(model.predict_proba(X[:10]))
+    return comp
