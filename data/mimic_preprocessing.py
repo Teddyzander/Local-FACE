@@ -2,11 +2,16 @@ import pandas as pd
 import numpy as np
 
 
-def load_dataset(dataset_name, features, test=True):
+def load_dataset(dataset_name,
+                 features,
+                 scale=False,
+                 test=True):
     """Load the RFD dataset from the csv file into a dataframe.
 
     Args:
         dataset_name (str): dataset name
+        features (lst): list of features
+        scale (bool): if to use scaled data (with standard scalar)
         test (bool): which split to load, train or test
 
     Returns:
@@ -17,20 +22,31 @@ def load_dataset(dataset_name, features, test=True):
 
     # load rfd dataset
     if dataset_name == "mimic":
-        if test == True:
-            dataset_file_path = ("rfd_model/results/test_data.csv")
+        if scale:
+            if test == True:
+                dataset_file_path = (
+                    "rfd_model/results/test_data_standardised.csv")
+            else:
+                dataset_file_path = (
+                    "rfd_model/results/training_data_standardised.csv")
         else:
-            dataset_file_path = ("rfd_model/results/training_data.csv")
+            if test == True:
+                dataset_file_path = ("rfd_model/results/test_data.csv")
+            else:
+                dataset_file_path = ("rfd_model/results/training_data.csv")
         dataset_df = pd.read_csv(dataset_file_path,
                                  # header=0,
                                  engine="python")
+
+        # deal with airway and sex not being binary, even though they should
+
         X = dataset_df[features]
         y = dataset_df['outcome']
 
     return X, y
 
 
-def factual_selector(dataset, features, model, target=''):
+def factual_selector(dataset, features, model, scale, seed=42):
     '''
     More informed choice of factual
     Can include factual with false negatives
@@ -39,33 +55,31 @@ def factual_selector(dataset, features, model, target=''):
         dataset (str): 'mimic'
         features
         model
-        target (str): optional 'fn', 'fp'
+        seed (int): for random factual selection
 
     Returns:
         factual: randomly selected patient
 
     '''
     # Load dataset
-    X, y = load_dataset(dataset, features)
+    X, y = load_dataset(dataset, features, scale=scale)
 
     # Make predictions on X
     pred = model.predict(X.to_numpy())
 
     # Compare predictions to reality
-    df = pd.DataFrame()
+    df = pd.DataFrame(X)
     df['y_true'] = y.tolist()
     df['y_pred'] = pred.tolist()
-    print(df)
 
-    comp = np.empty(len(y))
-    for id, patient in enumerate(y):
-        if patient == pred[id]:
-            print('matches')
-            np.append(comp, 1)
-        else:
-            print("doesn't match")
-            np.append(comp, 0)
+    # all false negatives: patients who were ready for discharge but not classified as such
+    fn = df[df['y_true'] == 1 & (df['y_pred'] == 0)]
 
     # Now select factual
+    factual = fn.sample(n=1, random_state=seed)
+    print(factual)
 
-    return comp
+    factual = factual[features]
+    factual = np.array(factual)[0]
+
+    return factual

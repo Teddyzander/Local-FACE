@@ -11,13 +11,15 @@ import os
 import pickle
 
 warnings.filterwarnings("ignore")
-graph = False
+
+graph = False  # plotting
+scale = True  # stanardised input data
 
 # parameters for locating counterfactual and path
 k = 5
 thresh = 0.9
 dist = 0.1
-seed = 39
+seed = 42
 
 # parameters for density model creation
 band_width = 0.025
@@ -33,30 +35,36 @@ features = ['airway', 'fio2', 'spo2_min',
 # import rfd testset data
 X_train, y_train = load_dataset('mimic',
                                 features,
+                                scale=scale,
                                 test=False
                                 )
 X_test, y_test = load_dataset('mimic',
-                              features
+                              features,
+                              scale=scale
                               )
 
 # trained random forest model
-model = pickle.load(open('rfd_model/results/rf.pickle', 'rb'))
+if scale:
+    model = pickle.load(open('rfd_model/results/rf_standardised.pickle', 'rb'))
+else:
+    model = pickle.load(open('rfd_model/results/rf.pickle', 'rb'))
 
 # sanity check that AUC performance matches expectation
 result = roc_auc_score(
     y_test, model.predict_proba(X_test.to_numpy())[:, 1])
-print('Test set AUC performance', result)
+print(f'Test set AUC performance {result:.3f}')
 
-# select factual, currently just randomly from all cases not rfd
+# select factual
+# just randomly from all cases not rfd
 factual = np.array(X_test.loc[y_test == 0].sample(n=1, random_state=seed))[0]
-print('Randomly selected factual: \n', factual)
+# or instead, for false negatives
+factual = factual_selector('mimic', features, model, seed=seed, scale=scale)
+print(factual)
 
 # y = np.ravel(y)
-# train model and density estimator using training data
+# train density estimator using training data
 X_train = np.array(X_train)
 dense = KernelDensity(kernel='gaussian', bandwidth=band_width).fit(X_train)
-
-# print(factual_selector('mimic', features, model))
 
 
 start_total = time.time()
@@ -85,6 +93,7 @@ print('Exploit time taken: {} seconds'.format(
     np.round(time.time() - start_exploit, 2)))
 print('---------------------------------')
 
+
 # calculate shortest path through G from factual to counterfactual
 print(r"Finding shortest path from x to x' through G (Enhance)...")
 start_enhance = time.time()
@@ -94,6 +103,16 @@ print('Enhance time taken: {} seconds'.format(
 print('---------------------------------')
 print('Total time taken: {} seconds'.format(
     np.round(time.time() - start_total, 2)))
+
+
+print('Randomly selected factual: \n', factual)
+print('Identified counterfactual', cf)
+
+print('And path', best_steps)
+
+# Create dataframe of factual, counterfactual and path
+
+# summary_df = pd.DataFrame(col)
 
 # plotting procedure
 # plot the data, the decision function, the searched path
