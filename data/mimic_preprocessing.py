@@ -46,7 +46,7 @@ def load_dataset(dataset_name,
     return X, y
 
 
-def factual_selector(dataset, features, model, scale, seed=42):
+def factual_selector(dataset, features, model, scale, seed=42, alignment='fn'):
     '''
     More informed choice of factual
     Can include factual with false negatives
@@ -56,6 +56,7 @@ def factual_selector(dataset, features, model, scale, seed=42):
         features
         model
         seed (int): for random factual selection
+        alignment (str): 'fn' for false negatives, 'fp' for false positives
 
     Returns:
         factual: randomly selected patient
@@ -72,11 +73,20 @@ def factual_selector(dataset, features, model, scale, seed=42):
     df['y_true'] = y.tolist()
     df['y_pred'] = pred.tolist()
 
-    # all false negatives: patients who were ready for discharge but not classified as such
-    fn = df[df['y_true'] == 1 & (df['y_pred'] == 0)]
-
-    # Now select factual
-    factual = fn.sample(n=1, random_state=seed)
+    if alignment == 'fn':
+        # all false negatives: patients who were ready for discharge but not classified as such
+        fn = df[df['y_true'] == 1 & (df['y_pred'] == 0)]
+        print(f'In total there are {len(fn)} FN cases')
+        # Now select factual
+        factual = fn.sample(n=1, random_state=seed)
+    elif alignment == 'fp':
+        # all false positives: patients who weren't ready for discharge but were classified as such
+        fp = df[df['y_true'] == 0 & (df['y_pred'] == 1)]
+        print(f'In total there are {len(fp)} FP cases')
+        # Now select factual
+        factual = fp.sample(n=1, random_state=seed)
+    else:
+        print('Alignment arg not recognised, please input "fn" or "fp".')
     print(factual)
 
     factual = factual[features]

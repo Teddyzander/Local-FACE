@@ -54,11 +54,14 @@ result = roc_auc_score(
     y_test, model.predict_proba(X_test.to_numpy())[:, 1])
 print(f'Test set AUC performance {result:.3f}')
 
-# select factual
+# ---- select factual ----
 # just randomly from all cases not rfd
-factual = np.array(X_test.loc[y_test == 0].sample(n=1, random_state=seed))[0]
+# factual = np.array(X_test.loc[y_test == 0].sample(n=1, random_state=seed))[0]
+
 # or instead, for false negatives
-factual = factual_selector('mimic', features, model, seed=seed, scale=scale)
+factual = factual_selector('mimic', features, model,
+                           seed=seed, scale=scale, alignment='fn')
+
 print(factual)
 
 # y = np.ravel(y)
