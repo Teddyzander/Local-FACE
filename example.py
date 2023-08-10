@@ -14,6 +14,7 @@ factual = np.array([0.04, 0.375])
 k = 5
 thresh = 0.95
 dist = 0.1
+method_type = 'strict'
 # parameters for data generation
 seed = 10
 samples = 300
@@ -49,7 +50,7 @@ print('---------------------------------')
 # generate graph nodes through data from factual to counterfactual
 print(r'Creating graph G (Exploit)...')
 start_exploit = time.time()
-best_steps, G = face.generate_graph(factual, cf, k, thresh, 1, 10, early=True)
+best_steps, G = face.generate_graph(factual, cf, k, thresh, 2, 10, early=True, method=method_type)
 # create edges between viable points and calculate the weights
 """prob = face.dense.score([factual])
 G = face.create_edges(1, 10, method='strict')"""
@@ -59,7 +60,7 @@ print('---------------------------------')
 # calculate shortest path through G from factual to counterfactual
 print(r"Finding shortest path from x to x' through G (Enhance)...")
 start_enhance = time.time()
-shortest_path = face.shortest_path()
+shortest_path = face.shortest_path(method=method_type)
 print('Enhance time taken: {} seconds'.format(np.round(time.time() - start_enhance, 2)))
 print('---------------------------------')
 print('Total time taken: {} seconds'.format(np.round(time.time() - start_total, 2)))
@@ -93,11 +94,10 @@ if not graph:
     ax[2].plot(best_steps[shortest_path, 0], best_steps[shortest_path, 1], '-g', label='Enhance', linewidth=2)
     ax[2].plot(factual[0], factual[1], 'go', label='factual')
     ax[2].plot(best_steps[-1, 0], best_steps[-1, 1], '*b', label='$x^\prime$', markersize=12, alpha=0.7, markeredgecolor='white')
-    """ax[2].plot([factual[0], best_steps[-1, 0]],
+    ax[2].plot([factual[0], best_steps[-1, 0]],
                [factual[1], best_steps[-1, 1]], '-r', linewidth=2)
     ax[2].plot([best_steps[shortest_path[1], 0], best_steps[shortest_path[3], 0]],
                [best_steps[shortest_path[1], 1], best_steps[shortest_path[3], 1]], '-r', label='illegal edge', linewidth=2)
-"""
     ax[2].title.set_text('Enhance')
     ax[2].annotate("", xy=(0.21, 0.375), xytext=(0.21, 0.45), arrowprops=dict(arrowstyle="->", lw=2.5, color='black', alpha=.7))
     ax[2].text(0.21, 0.475, 'not allowed', va='center', ha='center',

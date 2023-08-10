@@ -17,13 +17,15 @@ graph = False  # plotting
 scale = True  # stanardised input data
 
 # parameters for locating counterfactual and path
-k = 5
+k = 20
 thresh = 0.9
 dist = 0.1
 seed = 42
+method_type = 'avg'
+prob_dense = 0.8
 
 # parameters for density model creation
-band_width = 0.025
+band_width = 0.25
 
 features = ['airway', 'fio2', 'spo2_min',
             'hco3', 'resp_min', 'resp_max',
@@ -94,7 +96,7 @@ constraints = [
     [],  # 'bun',
     [],  # 'bmi',
     [],  # 'los',
-    [],  # 'age',
+    [">-0.622747+0.01", "<-0.622747-0.01"],  # 'age',
     [],  # 'sex'
 ]
 
@@ -126,7 +128,7 @@ print('---------------------------------')
 # generate graph nodes through data from factual to counterfactual
 print(r'Creating graph G (Exploit)...')
 start_exploit = time.time()
-best_steps, G = face.generate_graph(factual, cf, k, thresh, 1, 10, early=True)
+best_steps, G = face.generate_graph(factual, cf, k, thresh, prob_dense, 10, early=True, method=method_type)
 # create edges between viable points and calculate the weights
 """prob = face.dense.score([factual])
 G = face.create_edges(1, 10, method='strict')"""
@@ -138,7 +140,7 @@ print('---------------------------------')
 # calculate shortest path through G from factual to counterfactual
 print(r"Finding shortest path from x to x' through G (Enhance)...")
 start_enhance = time.time()
-shortest_path = face.shortest_path()
+shortest_path = face.shortest_path(method=method_type)
 print('Enhance time taken: {} seconds'.format(
     np.round(time.time() - start_enhance, 2)))
 print('---------------------------------')

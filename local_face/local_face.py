@@ -198,27 +198,25 @@ class LocalFace:
                 for l in range(i):
                     samples = np.zeros((len(steps[i]), sample + 1))
                     for u in range(len(samples)):
-                        if u == 0 or u == 21:
-                            temp1 = np.ones(
-                                int(np.floor((sample + 1) / 2))) * steps[i][0]
-                            temp2 = np.ones(
-                                int(np.ceil((sample + 1) / 2))) * steps[l][0]
-                            temp3 = np.concatenate((temp1, temp2))
-                            samples[u] = temp3
+                        if len(samples) > 2:
+                            if u == 0 or u == 21:
+                                temp1 = np.ones(int(np.ceil((sample + 1) / 2))) * steps[i][u]
+                                temp2 = np.ones(int(np.floor((sample + 1) / 2))) * steps[l][u]
+                                samples[u] = np.concatenate((temp1, temp2))
+                            else:
+                                samples[u] = np.linspace(steps[i][u], steps[l][u], sample + 1)
                         else:
-                            samples[u] = np.linspace(
-                                steps[i][u], steps[l][u], sample + 1)
+                            samples[u] = np.linspace(steps[i][u], steps[l][u], sample + 1)
                     samples = np.array(samples).T
 
                     score = np.exp(self.dense.score_samples(samples))
-                    test = np.exp(np.sum(score) / (sample + 1))
+                    test = np.sum(score) / (sample + 1)
                     if method == 'avg':
                         w = np.linalg.norm(steps[i] - steps[l], ord=2) * test
                         G.add_edge(i, l, weight=w)
                     elif method == 'strict':
                         if all(k >= tol for k in score):
-                            w = np.linalg.norm(
-                                steps[i] - steps[l], ord=2) * test
+                            w = np.linalg.norm(steps[i] - steps[l], ord=2) * test
                             G.add_edge(i, l, weight=w)
 
             i += 1
@@ -236,33 +234,29 @@ class LocalFace:
         for i in range(len(self.steps)):
             for j in range(i):
                 if np.linalg.norm(self.steps[i] - self.steps[j]) > 0:
-                    for l in range(len(self.steps[i])):
+                    if len(self.steps[i]) == 2:
+                        samples = np.array([np.linspace(self.steps[i][0], self.steps[j][0], sample + 1),
+                                            np.linspace(self.steps[i][1], self.steps[j][1], sample + 1)]).T
+                    else:
                         samples = np.zeros((len(self.steps[i]), sample + 1))
                         for u in range(len(samples)):
-                            if u == 0 or u == 21:
-                                temp1 = np.ones(
-                                    int(np.floor((sample + 1) / 2))) * self.steps[i][0]
-                                temp2 = np.ones(
-                                    int(np.ceil((sample + 1) / 2))) * self.steps[l][0]
-                                temp3 = np.concatenate((temp1, temp2))
-                                samples[u] = temp3
-                            else:
-                                samples[u] = np.linspace(
-                                    self.steps[i][u], self.steps[l][u], sample + 1)
-                        samples = np.array(samples).T
+                            if len(samples) > 2:
+                                if u == 0 or u == 21:
+                                    temp1 = np.ones(int(np.ceil((sample + 1) / 2))) * self.steps[i][u]
+                                    temp2 = np.ones(int(np.floor((sample + 1) / 2))) * self.steps[j][u]
+                                    samples[u] = np.concatenate((temp1, temp2))
+                                else:
+                                    samples[u] = np.linspace(self.steps[i][u], self.steps[j][u], sample + 1)
                     score = np.exp(self.dense.score_samples(samples))
-
+                    test = np.sum(score) / (sample + 1)
                     if method == 'avg':
-                        test = (np.sum(score) / (sample + 1))
+
                         if test > tol:
-                            w = np.linalg.norm(
-                                self.steps[i] - self.steps[j], ord=2) / test
+                            w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2) * test
                             self.G.add_edge(i, j, weight=w)
                     elif method == 'strict':
                         if all(k >= tol for k in score):
-                            test = (np.sum(score) / (sample + 1))
-                            w = np.linalg.norm(
-                                self.steps[i] - self.steps[j], ord=2) / test
+                            w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2) * test
                             self.G.add_edge(i, j, weight=w)
                     else:
                         print('no method selected')
@@ -270,7 +264,7 @@ class LocalFace:
 
         return self.G
 
-    def shortest_path(self):
+    def shortest_path(self, method='strict'):
         """
         Calculate shortest path from factual to counterfactual
         Returns: shortest path through nodes
@@ -288,6 +282,6 @@ class LocalFace:
                 print(
                     f'No path found, lowering probability density from {prob:.2f} to {(prob - threshold_reduction):.2f}')
                 prob = prob - threshold_reduction
-                self.create_edges(tol=prob, method='avg')
+                self.create_edges(tol=prob, method=method)
         print('Completed with density probability: {}'.format(prob))
         return self.path
