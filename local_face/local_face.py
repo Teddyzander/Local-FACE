@@ -200,13 +200,17 @@ class LocalFace:
                     for u in range(len(samples)):
                         if len(samples) > 2:
                             if u == 0 or u == 21:
-                                temp1 = np.ones(int(np.ceil((sample + 1) / 2))) * steps[i][u]
-                                temp2 = np.ones(int(np.floor((sample + 1) / 2))) * steps[l][u]
+                                temp1 = np.ones(
+                                    int(np.ceil((sample + 1) / 2))) * steps[i][u]
+                                temp2 = np.ones(
+                                    int(np.floor((sample + 1) / 2))) * steps[l][u]
                                 samples[u] = np.concatenate((temp1, temp2))
                             else:
-                                samples[u] = np.linspace(steps[i][u], steps[l][u], sample + 1)
+                                samples[u] = np.linspace(
+                                    steps[i][u], steps[l][u], sample + 1)
                         else:
-                            samples[u] = np.linspace(steps[i][u], steps[l][u], sample + 1)
+                            samples[u] = np.linspace(
+                                steps[i][u], steps[l][u], sample + 1)
                     samples = np.array(samples).T
 
                     score = np.exp(self.dense.score_samples(samples))
@@ -216,7 +220,8 @@ class LocalFace:
                         G.add_edge(i, l, weight=w)
                     elif method == 'strict':
                         if all(k >= tol for k in score):
-                            w = np.linalg.norm(steps[i] - steps[l], ord=2) * test
+                            w = np.linalg.norm(
+                                steps[i] - steps[l], ord=2) * test
                             G.add_edge(i, l, weight=w)
 
             i += 1
@@ -242,21 +247,27 @@ class LocalFace:
                         for u in range(len(samples)):
                             if len(samples) > 2:
                                 if u == 0 or u == 21:
-                                    temp1 = np.ones(int(np.ceil((sample + 1) / 2))) * self.steps[i][u]
-                                    temp2 = np.ones(int(np.floor((sample + 1) / 2))) * self.steps[j][u]
+                                    temp1 = np.ones(
+                                        int(np.ceil((sample + 1) / 2))) * self.steps[i][u]
+                                    temp2 = np.ones(
+                                        int(np.floor((sample + 1) / 2))) * self.steps[j][u]
                                     samples[u] = np.concatenate((temp1, temp2))
                                 else:
-                                    samples[u] = np.linspace(self.steps[i][u], self.steps[j][u], sample + 1)
+                                    samples[u] = np.linspace(
+                                        self.steps[i][u], self.steps[j][u], sample + 1)
+                    samples = np.array(samples).T
                     score = np.exp(self.dense.score_samples(samples))
                     test = np.sum(score) / (sample + 1)
                     if method == 'avg':
 
                         if test > tol:
-                            w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2) * test
+                            w = np.linalg.norm(
+                                self.steps[i] - self.steps[j], ord=2) * test
                             self.G.add_edge(i, j, weight=w)
                     elif method == 'strict':
                         if all(k >= tol for k in score):
-                            w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2) * test
+                            w = np.linalg.norm(
+                                self.steps[i] - self.steps[j], ord=2) * test
                             self.G.add_edge(i, j, weight=w)
                     else:
                         print('no method selected')
