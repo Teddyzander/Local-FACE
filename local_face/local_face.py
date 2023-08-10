@@ -188,7 +188,13 @@ class LocalFace:
                                         np.linspace(steps[i][1], steps[l][1], sample + 1)]).T
                     samples = np.zeros((len(steps[i]), sample + 1))
                     for u in range(len(samples)):
-                        samples[u] = np.linspace(steps[i][u], steps[l][u], sample + 1)
+                        if u == 0 or u == 21:
+                            temp1 = np.ones(int(np.floor((sample + 1) / 2))) * steps[i][0]
+                            temp2 = np.ones(int(np.ceil((sample + 1) / 2))) * steps[l][0]
+                            temp3 = np.concatenate((temp1, temp2))
+                            samples[u] = temp3
+                        else:
+                            samples[u] = np.linspace(steps[i][u], steps[l][u], sample + 1)
                     samples = np.array(samples).T
 
                     score = np.exp(self.dense.score_samples(samples))
