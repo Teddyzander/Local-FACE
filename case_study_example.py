@@ -1,6 +1,7 @@
 from data.mimic_preprocessing import *
 from local_face.local_face import *
 from local_face.helpers.plotters import *
+from local_face.helpers.datasets import *
 from sklearn.neighbors import KernelDensity
 from sklearn.metrics import roc_auc_score
 import time
@@ -43,6 +44,7 @@ X_test, y_test = load_dataset('mimic',
                               scale=scale
                               )
 
+
 # trained random forest model
 if scale:
     model = pickle.load(open('rfd_model/results/rf_standardised.pickle', 'rb'))
@@ -62,7 +64,43 @@ print(f'Test set AUC performance {result:.3f}')
 factual = factual_selector('mimic', features, model,
                            seed=seed, scale=scale, alignment='fn')
 
-print(factual)
+# print(factual)
+
+# reverse scaling
+
+# print(reverse_scaling('mimic', features, factual))
+
+
+# optionally constrain available datapoints to variables of interest
+
+constraints = [
+    [],  # 'airway'
+    [],  # 'fio2',
+    [],  # 'spo2_min',
+    [],  # 'hco3',
+    [],  # 'resp_min',
+    [],  # 'resp_max',
+    [],  # 'bp_min',
+    [],  # 'hr_min', ["<45"], [">55"]
+    [],  # 'hr_max',
+    [],  # 'pain',
+    [],  # 'gcs_min',
+    [],  # 'temp_min',
+    [],  # 'temp_max',
+    [],  # 'haemoglobin',
+    [],  # 'k',
+    [],  # 'na',
+    [],  # 'creatinine',
+    [],  # 'bun',
+    [],  # 'bmi',
+    [],  # 'los',
+    [],  # 'age',
+    [],  # 'sex'
+]
+
+X_train = constrain_search(X_train, constraints)
+X_test = constrain_search(X_test, constraints)
+
 
 # y = np.ravel(y)
 # train density estimator using training data
@@ -73,7 +111,7 @@ dense = KernelDensity(kernel='gaussian', bandwidth=band_width).fit(X_train)
 start_total = time.time()
 
 # initialise Local-FACE model
-face = LocalFace(X_test, model, dense)
+face = LocalFace(X_train, model, dense)  # constrained
 
 # find a counterfactual
 print(r"Finding counterfactual x' (explore)...")
@@ -116,7 +154,7 @@ print('And path', best_steps)
 # Create dataframe of factual, counterfactual and path
 
 # summary_df = pd.DataFrame(col)
-
+ 
 # plotting procedure
 # plot the data, the decision function, the searched path
 if graph:

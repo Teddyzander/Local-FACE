@@ -196,12 +196,18 @@ class LocalFace:
                 G.add_node(i)
                 # find and calculate edges
                 for l in range(i):
-                    test = np.array([np.linspace(steps[i][0], steps[l][0], sample + 1),
-                                     np.linspace(steps[i][1], steps[l][1], sample + 1)]).T
                     samples = np.zeros((len(steps[i]), sample + 1))
                     for u in range(len(samples)):
-                        samples[u] = np.linspace(
-                            steps[i][u], steps[l][u], sample + 1)
+                        if u == 0 or u == 21:
+                            temp1 = np.ones(
+                                int(np.floor((sample + 1) / 2))) * steps[i][0]
+                            temp2 = np.ones(
+                                int(np.ceil((sample + 1) / 2))) * steps[l][0]
+                            temp3 = np.concatenate((temp1, temp2))
+                            samples[u] = temp3
+                        else:
+                            samples[u] = np.linspace(
+                                steps[i][u], steps[l][u], sample + 1)
                     samples = np.array(samples).T
 
                     score = np.exp(self.dense.score_samples(samples))
@@ -230,52 +236,20 @@ class LocalFace:
         for i in range(len(self.steps)):
             for j in range(i):
                 if np.linalg.norm(self.steps[i] - self.steps[j]) > 0:
-                    samples = np.array([np.linspace(self.steps[i][0], self.steps[j][0], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][1], self.steps[j][1], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][2], self.steps[j][2], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][3], self.steps[j][3], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][4], self.steps[j][4], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][5], self.steps[j][5], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][6], self.steps[j][6], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][7], self.steps[j][7], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][8], self.steps[j][8], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][9], self.steps[j][9], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][10], self.steps[j][10], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][11], self.steps[j][11], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][12], self.steps[j][12], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][13], self.steps[j][13], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][14], self.steps[j][14], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][15], self.steps[j][15], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][16], self.steps[j][16], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][17], self.steps[j][17], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][18], self.steps[j][18], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][19], self.steps[j][19], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][20], self.steps[j][20], sample + 1),
-                                        np.linspace(
-                                            self.steps[i][21], self.steps[j][21], sample + 1),
-                                        ]).T
-
-                    # score = self.dense.score_samples(samples)
+                    for l in range(len(self.steps[i])):
+                        samples = np.zeros((len(self.steps[i]), sample + 1))
+                        for u in range(len(samples)):
+                            if u == 0 or u == 21:
+                                temp1 = np.ones(
+                                    int(np.floor((sample + 1) / 2))) * self.steps[i][0]
+                                temp2 = np.ones(
+                                    int(np.ceil((sample + 1) / 2))) * self.steps[l][0]
+                                temp3 = np.concatenate((temp1, temp2))
+                                samples[u] = temp3
+                            else:
+                                samples[u] = np.linspace(
+                                    self.steps[i][u], self.steps[l][u], sample + 1)
+                        samples = np.array(samples).T
                     score = np.exp(self.dense.score_samples(samples))
 
                     if method == 'avg':
