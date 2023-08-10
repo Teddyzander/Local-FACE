@@ -59,8 +59,8 @@ class LocalFace:
         # find closest k points to x0
         close = tree.query(x0, k=k, p=2)[1]
 
-        print(close)
-        print(tree.data[close])
+        # print(close)
+        # print(tree.data[close])
 
         # find probabilities of closest points
         vals = self.model.predict_proba(tree.data[close])[:, 1]
@@ -241,7 +241,7 @@ class LocalFace:
                 if np.linalg.norm(self.steps[i] - self.steps[j]) > 0:
                     if len(self.steps[i]) == 2:
                         samples = np.array([np.linspace(self.steps[i][0], self.steps[j][0], sample + 1),
-                                            np.linspace(self.steps[i][1], self.steps[j][1], sample + 1)]).T
+                                            np.linspace(self.steps[i][1], self.steps[j][1], sample + 1)])
                     else:
                         samples = np.zeros((len(self.steps[i]), sample + 1))
                         for u in range(len(samples)):

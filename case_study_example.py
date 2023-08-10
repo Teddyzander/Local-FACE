@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import os
 import pickle
+import matplotlib.pyplot as plt
 
 warnings.filterwarnings("ignore")
 
@@ -20,9 +21,9 @@ scale = True  # stanardised input data
 k = 20
 thresh = 0.9
 dist = 0.1
-seed = 42
-method_type = 'avg'
-prob_dense = 0.8
+seed = 41
+method_type = 'strict'
+prob_dense = 0.9
 
 # parameters for density model creation
 band_width = 0.25
@@ -46,10 +47,12 @@ X_test, y_test = load_dataset('mimic',
                               scale=scale
                               )
 
+all_columns = X_train.columns
 
 # trained random forest model
 if scale:
-    model = pickle.load(open('rfd_model/results/rf_standardised.pickle', 'rb'))
+    model = pickle.load(
+        open('rfd_model/results/rf_standardised_mimic_only.pickle', 'rb'))
 else:
     model = pickle.load(open('rfd_model/results/rf.pickle', 'rb'))
 
@@ -60,11 +63,11 @@ print(f'Test set AUC performance {result:.3f}')
 
 # ---- select factual ----
 # just randomly from all cases not rfd
-# factual = np.array(X_test.loc[y_test == 0].sample(n=1, random_state=seed))[0]
+factual = np.array(X_test.loc[y_test == 0].sample(n=1, random_state=seed))[0]
 
 # or instead, for false negatives
-factual = factual_selector('mimic', features, model,
-                           seed=seed, scale=scale, alignment='fn')
+# factual = factual_selector('mimic', features, model,
+#                           seed=seed, scale=scale, alignment='fn')
 
 # print(factual)
 
@@ -122,13 +125,13 @@ steps, cf = face.find_cf(factual, k=k, thresh=thresh, mom=0)
 print('Explore time taken: {} seconds'.format(
     np.round(time.time() - start_explore, 2)))
 overall_recourse = pd.DataFrame([factual - cf], columns=features)
-print('Overall recourse:', overall_recourse)
 print('---------------------------------')
 
 # generate graph nodes through data from factual to counterfactual
 print(r'Creating graph G (Exploit)...')
 start_exploit = time.time()
-best_steps, G = face.generate_graph(factual, cf, k, thresh, prob_dense, 10, early=True, method=method_type)
+best_steps, G = face.generate_graph(
+    factual, cf, k, thresh, prob_dense, 10, early=True, method=method_type)
 # create edges between viable points and calculate the weights
 """prob = face.dense.score([factual])
 G = face.create_edges(1, 10, method='strict')"""
@@ -148,15 +151,45 @@ print('Total time taken: {} seconds'.format(
     np.round(time.time() - start_total, 2)))
 
 
-print('Randomly selected factual: \n', factual)
-print('Identified counterfactual', cf)
-
-print('And path', best_steps)
-
 # Create dataframe of factual, counterfactual and path
+# First row = factual
+# Intermediate rows = path
+# Final row = counterfactual
+factual = pd.DataFrame([factual], columns=features)
+# best_steps = pd.DataFrame([best_steps], columns=features)
+cf = pd.DataFrame([cf], columns=features)
 
-# summary_df = pd.DataFrame(col)
- 
+print('Randomly selected factual: \n', factual)
+print('Path: \n', best_steps)
+print('Identified counterfactual: \n', cf)
+
+combined = pd.concat([factual,
+                      # best_steps,
+                      cf]).reset_index(drop=True)
+
+print(combined)
+
+# Find most relevant features to display
+# Identify features with largest std
+# Then extract top n
+top_n = 5
+features_std = combined.std().sort_values(ascending=False)[0:top_n]
+print(f'Top {top_n} features which vary: ', features_std)
+
+# Then extract features to list
+# features_std.index()
+
+# Plot probabilites over the path
+
+probs = model.predict_proba(best_steps)
+rfd_probs = [item[1] for item in probs]
+
+plt.plot(rfd_probs,
+         label=('Probability Ready for Discharge')
+         )
+plt.legend()
+plt.show()
+
 # plotting procedure
 # plot the data, the decision function, the searched path
 if graph:
