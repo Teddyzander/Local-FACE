@@ -11,6 +11,7 @@ import pandas as pd
 import os
 import pickle
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 
 warnings.filterwarnings("ignore")
 
@@ -21,12 +22,15 @@ scale = True  # stanardised input data
 k = 20
 thresh = 0.75
 dist = 0.1
-seed = 8
+seed = 40
 method_type = 'strict'
 prob_dense = 0.01
 
+# Extract top n
+top_n_features = 5
+
 # parameters for density model creation
-band_width = 0.01
+band_width = 0.05
 
 features = ['airway', 'fio2', 'spo2_min',
             'hco3', 'resp_min', 'resp_max',
@@ -161,8 +165,6 @@ path_df = pd.DataFrame(best_steps, columns=features)
 
 # Find most relevant / changing / volatile features to display
 # Identify features with largest std
-# Extract top n
-top_n_features = 3
 features_std = path_df.std().sort_values(ascending=False)[0:top_n_features]
 print(f'Top {top_n_features} features which vary: \n', features_std)
 # Then extract features to list
@@ -174,20 +176,34 @@ volatile_combined = path_df[volatile_feats]
 print('Top features to track overall: \n', volatile_combined)
 
 # Plot probabilites over the path
-fig, ax = plt.subplots(2, 1)
+fig, ax = plt.subplots(2, 1, sharex=True)
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['font.monospace'] = 'Ubuntu Mono'
+plt.rcParams['font.size'] = 10
+plt.rcParams['axes.labelsize'] = 10
+plt.rcParams['axes.labelweight'] = 'bold'
+plt.rcParams['xtick.labelsize'] = 8
+plt.rcParams['ytick.labelsize'] = 8
+plt.rcParams['legend.fontsize'] = 10
+plt.rcParams['figure.titlesize'] = 12
 probs = model.predict_proba(best_steps)
 rfd_probs = [item[1] for item in probs]
-ax[0].plot(rfd_probs,
+ax[0].plot(rfd_probs, '-k',
            label=('Probability Ready for Discharge')
            )
-ax[0].legend()
+ax[0].axhline(thresh, color='red', linestyle='--', linewidth='0.5', alpha=0.5, label='discharge Threshold')
+ax[0].legend(fancybox=True, framealpha=0.3)
+ax[0].set_ylim([0, 1])
 num_inst = len(path_df.index)
 ind_inst = np.arange(0, num_inst)
 for i in range(top_n_features):
     ax[1].plot(ind_inst, volatile_combined.iloc[:, i],
-               label=str(list(volatile_combined.columns.values)[i]))
-ax[1].legend(loc='lower left', framealpha=0.3)
-plt.savefig("local_face/plots/RFD/RFD_{}".format(seed))
+               label=str(list(volatile_combined.columns.values)[i]), linewidth=0.5)
+ax[1].legend(loc='lower left', framealpha=0.3, fancybox=True)
+ax[1].xaxis.set_major_locator(MaxNLocator(integer=True))
+ax[1].set_xlim([0, num_inst-1])
+
+plt.savefig("local_face/plots/RFD/RFD_feats{}_seed{}".format(top_n_features,seed))
 plt.show()
 
 print('Top features to track between examples:')
