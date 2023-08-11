@@ -19,14 +19,14 @@ scale = True  # stanardised input data
 
 # parameters for locating counterfactual and path
 k = 20
-thresh = 0.9
+thresh = 0.75
 dist = 0.1
 seed = 41
 method_type = 'strict'
-prob_dense = 0.9
+prob_dense = 0.1
 
 # parameters for density model creation
-band_width = 0.25
+band_width = 0.01
 
 features = ['airway', 'fio2', 'spo2_min',
             'hco3', 'resp_min', 'resp_max',
@@ -79,9 +79,13 @@ factual = np.array(X_test.loc[y_test == 0].sample(n=1, random_state=seed))[0]
 
 # print(reverse_scaling('mimic', features, factual))
 
+# train density estimator using training data
+X_train_den = np.array(X_train)
+dense = KernelDensity(kernel='gaussian', bandwidth=band_width).fit(X_train_den)
 
 # optionally constrain available datapoints to variables of interest
-
+upper_age = ">"+str(factual[20] + 0.05)
+lower_age = "<"+str(factual[20] - 0.05)
 constraints = [
     [],  # 'airway'
     [],  # 'fio2',
@@ -103,7 +107,7 @@ constraints = [
     [],  # 'bun',
     [],  # 'bmi',
     [],  # 'los',
-    [">-0.622747+0.01", "<-0.622747-0.01"],  # 'age',
+    [upper_age, lower_age],  # 'age',
     [],  # 'sex'
 ]
 
@@ -112,9 +116,7 @@ X_test = constrain_search(X_test, constraints)
 
 
 # y = np.ravel(y)
-# train density estimator using training data
 X_train = np.array(X_train)
-dense = KernelDensity(kernel='gaussian', bandwidth=band_width).fit(X_train)
 
 
 start_total = time.time()
@@ -170,7 +172,17 @@ volatile_feats = features_std.index.values
 # Then extract these relevant columns from the path dataframe (combined)
 volatile_combined = path_df[volatile_feats]
 
-print('Top features to track: \n', volatile_combined)
+print('Top features to track overall: \n', volatile_combined)
+
+print('Top features to track between examples: \n')
+for i in range(1, len(path_df.index)):
+    inst = path_df.iloc[i-1:i+1]
+    temp = inst.std().sort_values(ascending=False)[0:top_n_features]
+    volatile_feats = temp.index.values
+
+    # Then extract these relevant columns from the path dataframe (combined)
+    volatile_combined = temp[volatile_feats]
+    print(volatile_combined)
 
 # Plot probabilites over the path
 probs = model.predict_proba(best_steps)

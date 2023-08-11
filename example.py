@@ -28,7 +28,7 @@ data = generator(samples, seed, noise)  # generate data
 X = data.iloc[:, :2]  # ensure data is 2d
 y = data.y  # get target
 
-con_X = datasets.constrain_search(X, [[">0.4"], []])
+con_X = datasets.constrain_search(X, [[], []])
 con_X['y'] = data.y
 
 # train model and density estimator using training data
@@ -50,7 +50,7 @@ print('---------------------------------')
 # generate graph nodes through data from factual to counterfactual
 print(r'Creating graph G (Exploit)...')
 start_exploit = time.time()
-best_steps, G = face.generate_graph(factual, cf, k, thresh, 2, 10, early=True, method=method_type)
+best_steps, G = face.generate_graph(factual, cf, k, thresh, 1, 10, early=True, method=method_type)
 # create edges between viable points and calculate the weights
 """prob = face.dense.score([factual])
 G = face.create_edges(1, 10, method='strict')"""

@@ -81,8 +81,11 @@ class LocalFace:
             close = nei[1]
 
             # find weighted probabilities of closest points
-            vals = (1 / (1 + nei[0])) * \
-                self.model.predict_proba(tree.data[close])[:, 1]
+            try:
+                vals = (1 / (1 + nei[0])) * \
+                    self.model.predict_proba(tree.data[close])[:, 1]
+            except:
+                print('fail')
 
             # save best move and delete from tree and rebuild
             indx = np.argmax(vals)
@@ -259,7 +262,6 @@ class LocalFace:
                     score = np.exp(self.dense.score_samples(samples))
                     test = np.sum(score) / (sample + 1)
                     if method == 'avg':
-
                         if test > tol:
                             w = np.linalg.norm(
                                 self.steps[i] - self.steps[j], ord=2) * test
@@ -283,7 +285,7 @@ class LocalFace:
         """
         success = False
         prob = self.prob
-        threshold_reduction = 0.1
+        threshold_reduction = 0.01
         while not success:
             try:
                 self.path = nx.shortest_path(
