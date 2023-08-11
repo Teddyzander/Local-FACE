@@ -21,7 +21,7 @@ scale = True  # stanardised input data
 k = 20
 thresh = 0.75
 dist = 0.1
-seed = 41
+seed = 43
 method_type = 'strict'
 prob_dense = 0.1
 
@@ -84,8 +84,8 @@ X_train_den = np.array(X_train)
 dense = KernelDensity(kernel='gaussian', bandwidth=band_width).fit(X_train_den)
 
 # optionally constrain available datapoints to variables of interest
-upper_age = ">"+str(factual[20] + 0.05)
-lower_age = "<"+str(factual[20] - 0.05)
+upper_age = ">"+str(factual[20] + 0.1)
+lower_age = "<"+str(factual[20] - 0.1)
 constraints = [
     [],  # 'airway'
     [],  # 'fio2',
@@ -174,8 +174,24 @@ volatile_combined = path_df[volatile_feats]
 
 print('Top features to track overall: \n', volatile_combined)
 
-print('Top features to track between examples: \n')
+# Plot probabilites over the path
+fig, ax = plt.subplots(2, 1)
+probs = model.predict_proba(best_steps)
+rfd_probs = [item[1] for item in probs]
+ax[0].plot(rfd_probs,
+         label=('Probability Ready for Discharge')
+         )
+ax[0].legend()
+num_inst = len(path_df.index)
+ind_inst = np.arange(0, num_inst)
+for i in range(top_n_features):
+    ax[1].plot(ind_inst, volatile_combined.iloc[:, i], label=str(list(volatile_combined.columns.values)[i]))
+ax[1].legend(loc='lower left', framealpha=0.3)
+plt.show()
+
+print('Top features to track between examples:')
 for i in range(1, len(path_df.index)):
+    print('instance {} with RFD certainty {}'.format(i, model.predict_proba([np.array(path_df.iloc[i])])[0, 1]))
     inst = path_df.iloc[i-1:i+1]
     temp = inst.std().sort_values(ascending=False)[0:top_n_features]
     volatile_feats = temp.index.values
@@ -183,15 +199,6 @@ for i in range(1, len(path_df.index)):
     # Then extract these relevant columns from the path dataframe (combined)
     volatile_combined = temp[volatile_feats]
     print(volatile_combined)
-
-# Plot probabilites over the path
-probs = model.predict_proba(best_steps)
-rfd_probs = [item[1] for item in probs]
-plt.plot(rfd_probs,
-         label=('Probability Ready for Discharge')
-         )
-plt.legend()
-plt.show()
 
 # plotting procedure
 # plot the data, the decision function, the searched path
