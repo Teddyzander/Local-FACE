@@ -4,7 +4,7 @@ import numpy as np
 
 def load_dataset(dataset_name,
                  features,
-                 scale=False,
+                 scale=True,
                  test=True):
     """Load the RFD dataset from the csv file into a dataframe.
 
@@ -25,15 +25,20 @@ def load_dataset(dataset_name,
         if scale:
             if test == True:
                 dataset_file_path = (
-                    "rfd_model/results/test_data_standardised.csv")
+                    "rfd_model/results/combined_test_data_standardised.csv"
+                    # "rfd_model/results/legacy/test_data_standardised.csv"
+                )
             else:
                 dataset_file_path = (
-                    "rfd_model/results/training_data_standardised.csv")
+                    "rfd_model/results/combined_training_data_standardised.csv"
+                    # "rfd_model/results/legacy/training_data_standardised.csv"
+                )
         else:
             if test == True:
-                dataset_file_path = ("rfd_model/results/test_data.csv")
+                dataset_file_path = ("rfd_model/results/legacy/test_data.csv")
             else:
-                dataset_file_path = ("rfd_model/results/training_data.csv")
+                dataset_file_path = (
+                    "rfd_model/results/legacy/training_data.csv")
         dataset_df = pd.read_csv(dataset_file_path,
                                  # header=0,
                                  engine="python")

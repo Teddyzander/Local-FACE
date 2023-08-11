@@ -52,7 +52,11 @@ all_columns = X_train.columns
 # trained random forest model
 if scale:
     model = pickle.load(
-        open('rfd_model/results/rf_standardised_mimic_only.pickle', 'rb'))
+        open(
+            'rfd_model/results/rf_standardised_all.pickle',  # updated model including GICU
+            # 'rfd_model/results/legacy/rf_standardised_mimic_only.pickle', # previous model just trained on MIMIC
+            'rb'
+        ))
 else:
     model = pickle.load(open('rfd_model/results/rf.pickle', 'rb'))
 
@@ -151,39 +155,26 @@ print('Total time taken: {} seconds'.format(
     np.round(time.time() - start_total, 2)))
 
 
-# Create dataframe of factual, counterfactual and path
-# First row = factual
-# Intermediate rows = path
-# Final row = counterfactual
-factual = pd.DataFrame([factual], columns=features)
-# best_steps = pd.DataFrame([best_steps], columns=features)
-cf = pd.DataFrame([cf], columns=features)
+# Create dataframe of path
+path_df = pd.DataFrame(best_steps, columns=features)
 
-print('Randomly selected factual: \n', factual)
-print('Path: \n', best_steps)
-print('Identified counterfactual: \n', cf)
-
-combined = pd.concat([factual,
-                      # best_steps,
-                      cf]).reset_index(drop=True)
-
-print(combined)
-
-# Find most relevant features to display
+# Find most relevant / changing / volatile features to display
 # Identify features with largest std
-# Then extract top n
-top_n = 5
-features_std = combined.std().sort_values(ascending=False)[0:top_n]
-print(f'Top {top_n} features which vary: ', features_std)
-
+# Extract top n
+top_n_features = 3
+features_std = path_df.std().sort_values(ascending=False)[0:top_n_features]
+print(f'Top {top_n_features} features which vary: \n', features_std)
 # Then extract features to list
-# features_std.index()
+volatile_feats = features_std.index.values
+
+# Then extract these relevant columns from the path dataframe (combined)
+volatile_combined = path_df[volatile_feats]
+
+print('Top features to track: \n', volatile_combined)
 
 # Plot probabilites over the path
-
 probs = model.predict_proba(best_steps)
 rfd_probs = [item[1] for item in probs]
-
 plt.plot(rfd_probs,
          label=('Probability Ready for Discharge')
          )
