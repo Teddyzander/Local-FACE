@@ -53,8 +53,7 @@ all_columns = X_train.columns
 if scale:
     model = pickle.load(
         open(
-            'rfd_model/results/rf_standardised_all.pickle',  # updated model including GICU
-            # 'rfd_model/results/legacy/rf_standardised_mimic_only.pickle', # previous model just trained on MIMIC
+            'rfd_model/results/rf_combined_standardscale.pickle',
             'rb'
         ))
 else:
@@ -179,20 +178,22 @@ fig, ax = plt.subplots(2, 1)
 probs = model.predict_proba(best_steps)
 rfd_probs = [item[1] for item in probs]
 ax[0].plot(rfd_probs,
-         label=('Probability Ready for Discharge')
-         )
+           label=('Probability Ready for Discharge')
+           )
 ax[0].legend()
 num_inst = len(path_df.index)
 ind_inst = np.arange(0, num_inst)
 for i in range(top_n_features):
-    ax[1].plot(ind_inst, volatile_combined.iloc[:, i], label=str(list(volatile_combined.columns.values)[i]))
+    ax[1].plot(ind_inst, volatile_combined.iloc[:, i],
+               label=str(list(volatile_combined.columns.values)[i]))
 ax[1].legend(loc='lower left', framealpha=0.3)
 plt.savefig("local_face/plots/RFD/RFD_{}".format(seed))
 plt.show()
 
 print('Top features to track between examples:')
 for i in range(1, len(path_df.index)):
-    print('instance {} with RFD certainty {}'.format(i, model.predict_proba([np.array(path_df.iloc[i])])[0, 1]))
+    print('instance {} with RFD certainty {}'.format(
+        i, model.predict_proba([np.array(path_df.iloc[i])])[0, 1]))
     inst = path_df.iloc[i-1:i+1]
     temp = inst.std().sort_values(ascending=False)[0:top_n_features]
     volatile_feats = temp.index.values
