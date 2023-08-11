@@ -25,13 +25,11 @@ def load_dataset(dataset_name,
         if scale:
             if test == True:
                 dataset_file_path = (
-                    "rfd_model/results/combined_test_data_standardised.csv"
-                    # "rfd_model/results/legacy/test_data_standardised.csv"
+                    "rfd_model/results/combined_test_data_standardscale.csv"
                 )
             else:
                 dataset_file_path = (
-                    "rfd_model/results/combined_training_data_standardised.csv"
-                    # "rfd_model/results/legacy/training_data_standardised.csv"
+                    "rfd_model/results/combined_training_data_standardscale.csv"
                 )
         else:
             if test == True:
