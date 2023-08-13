@@ -12,25 +12,26 @@ import os
 import pickle
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
+from sklearn.model_selection import GridSearchCV
 
 warnings.filterwarnings("ignore")
 
 graph = False  # plotting
 scale = True  # stanardised input data
+bandwidth_search = False # search for optimal bandwidth
 
 # parameters for locating counterfactual and path
-k = 20
+k = 10
 thresh = 0.75
-dist = 0.1
-seed = 40
+dist = 0.5
+seed = 4454
 method_type = 'strict'
-prob_dense = 0.01
+prob_dense = 0.001
 
 # Extract top n
-top_n_features = 5
+top_n_features = 6
 
 # parameters for density model creation
-band_width = 0.05
 
 features = ['airway', 'fio2', 'spo2_min',
             'hco3', 'resp_min', 'resp_max',
@@ -50,6 +51,16 @@ X_test, y_test = load_dataset('mimic',
                               features,
                               scale=scale
                               )
+
+if bandwidth_search:
+    grid = GridSearchCV(KernelDensity(),
+                        {'bandwidth': np.linspace(0.46, 0.48, 50)},
+                        cv=20) # 20-fold cross-validation
+    grid.fit(X_train)
+    print(grid.best_params_)
+    band_width = grid.best_params_['bandwidth']
+else:
+    band_width = 0.4736842105263158
 
 all_columns = X_train.columns
 
@@ -191,29 +202,43 @@ rfd_probs = [item[1] for item in probs]
 ax[0].plot(rfd_probs, '-k',
            label=('Probability Ready for Discharge')
            )
-ax[0].axhline(thresh, color='red', linestyle='--', linewidth='0.5', alpha=0.5, label='discharge Threshold')
+ax[0].axhline(thresh, color='red', linestyle='--', linewidth='0.5', alpha=0.5, label='Discharge Threshold')
 ax[0].legend(fancybox=True, framealpha=0.3)
 ax[0].set_ylim([0, 1])
 num_inst = len(path_df.index)
 ind_inst = np.arange(0, num_inst)
 for i in range(top_n_features):
+    print(i)
     ax[1].plot(ind_inst, volatile_combined.iloc[:, i],
                label=str(list(volatile_combined.columns.values)[i]), linewidth=0.5)
 ax[1].legend(loc='lower left', framealpha=0.3, fancybox=True)
 ax[1].xaxis.set_major_locator(MaxNLocator(integer=True))
 ax[1].set_xlim([0, num_inst-1])
+ax[1].axhline(0, color='black', linestyle='--', linewidth='0.5', alpha=0.5)
+
 
 plt.savefig("local_face/plots/RFD/RFD_feats{}_seed{}".format(top_n_features,seed))
 plt.show()
 
 print('Top features to track between examples:')
+print('factual info: ')
+print('certainty {}'.format(model.predict_proba([np.array(path_df.iloc[0])])[0, 1]))
+print('feats: {}'.format(path_df.iloc[0]))
+lin_dist = np.linalg.norm(np.array(path_df.iloc[0] - path_df.iloc[-1]))
+print('linear distance to counterfactual: {}'.format(lin_dist))
+tot_dist = 0
 for i in range(1, len(path_df.index)):
     print('instance {} with RFD certainty {}'.format(
         i, model.predict_proba([np.array(path_df.iloc[i])])[0, 1]))
     inst = path_df.iloc[i-1:i+1]
-    temp = inst.std().sort_values(ascending=False)[0:top_n_features]
+    distance = np.linalg.norm(np.array(inst.iloc[0]) - np.array(inst.iloc[1]))
+    tot_dist += distance
+    print('distance between instances: {}'.format(distance))
+    print('total distance from factual through previous points: {}'.format(tot_dist))
+    temp = (inst.iloc[0] - inst.iloc[1]).sort_values(ascending=False)[0:top_n_features]
     volatile_feats = temp.index.values
 
     # Then extract these relevant columns from the path dataframe (combined)
-    volatile_combined = temp[volatile_feats]
+    volatile_combined = inst.iloc[1][volatile_feats] - inst.iloc[0][volatile_feats]
     print(volatile_combined)
+print('Deviation Score (actual dist/linear dist): {}'.format(lin_dist/tot_dist))

@@ -85,7 +85,7 @@ class LocalFace:
                 vals = (1 / (1 + nei[0])) * \
                     self.model.predict_proba(tree.data[close])[:, 1]
             except:
-                print('fail')
+                raise ValueError('Failed to find a counterfactual')
 
             # save best move and delete from tree and rebuild
             indx = np.argmax(vals)
@@ -285,7 +285,7 @@ class LocalFace:
         """
         success = False
         prob = self.prob
-        threshold_reduction = 0.01
+        threshold_reduction = 0.001
         while not success:
             try:
                 self.path = nx.shortest_path(
@@ -293,7 +293,7 @@ class LocalFace:
                 success = True
             except:
                 print(
-                    f'No path found, lowering probability density from {prob:.2f} to {(prob - threshold_reduction):.2f}')
+                    f'No path found, lowering probability density')
                 prob = prob - threshold_reduction
                 self.create_edges(tol=prob, method=method)
         print('Completed with density probability: {}'.format(prob))
