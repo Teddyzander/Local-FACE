@@ -18,13 +18,13 @@ warnings.filterwarnings("ignore")
 
 graph = False  # plotting
 scale = True  # stanardised input data
-bandwidth_search = False # search for optimal bandwidth
+bandwidth_search = False  # search for optimal bandwidth
 
 # parameters for locating counterfactual and path
 k = 10
 thresh = 0.75
-dist = 0.5
-seed = 4454
+dist = 1
+seed = 3
 method_type = 'strict'
 prob_dense = 0.001
 
@@ -53,14 +53,16 @@ X_test, y_test = load_dataset('mimic',
                               )
 
 if bandwidth_search:
-    grid = GridSearchCV(KernelDensity(),
-                        {'bandwidth': np.linspace(0.46, 0.48, 50)},
+    grid = GridSearchCV(KernelDensity(kernel='tophat'),
+                        {'bandwidth': np.linspace(0.00001, 0.001, 1000)},
                         cv=20) # 20-fold cross-validation
     grid.fit(X_train)
     print(grid.best_params_)
     band_width = grid.best_params_['bandwidth']
 else:
     band_width = 0.4736842105263158
+
+band_width = 0.0001
 
 all_columns = X_train.columns
 
@@ -95,7 +97,7 @@ factual = np.array(X_test.loc[y_test == 0].sample(n=1, random_state=seed))[0]
 
 # train density estimator using training data
 X_train_den = np.array(X_train)
-dense = KernelDensity(kernel='gaussian', bandwidth=band_width).fit(X_train_den)
+dense = KernelDensity(kernel='tophat', bandwidth=band_width).fit(X_train_den)
 
 # optionally constrain available datapoints to variables of interest
 upper_age = ">"+str(factual[20] + 0.5)
