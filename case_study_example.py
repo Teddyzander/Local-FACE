@@ -8,7 +8,6 @@ import time
 import warnings
 import numpy as np
 import pandas as pd
-import os
 import pickle
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
@@ -23,7 +22,7 @@ bandwidth_search = False  # search for optimal bandwidth
 # parameters for locating counterfactual and path
 k = 50
 thresh = 0.75
-dist = 0.5
+dist = 1
 seed = 12
 method_type = 'strict'
 prob_dense = 1*10**(-12)
@@ -62,7 +61,7 @@ X_test, y_test = load_dataset('mimic',
 if bandwidth_search:
     grid = GridSearchCV(KernelDensity(kernel='tophat'),
                         {'bandwidth': np.linspace(0.00001, 0.001, 1000)},
-                        cv=20) # 20-fold cross-validation
+                        cv=20)  # 20-fold cross-validation
     grid.fit(X_train)
     print(grid.best_params_)
     band_width = grid.best_params_['bandwidth']
@@ -89,12 +88,6 @@ print(f'Test set AUC performance {result:.3f}')
 # ---- select factual ----
 factual = factual_selector('mimic', features, model,
                            seed=seed, scale=scale, alignment=factual_type)
-
-# print(factual)
-
-# reverse scaling
-
-# print(reverse_scaling('mimic', features, factual))
 
 # train density estimator using training data
 X_train_den = np.array(X_train)
@@ -179,10 +172,14 @@ print('Total time taken: {} seconds'.format(
 # Create dataframe of path
 path_df = pd.DataFrame(best_steps, columns=features)
 
+# And copy in the original unscaled space
+path_df_inversed_scaling = inverse_scaling(path_df, features)
+
 # Find most relevant / changing / volatile features to display
 # Identify features with largest std
 features_std = path_df.std().sort_values(ascending=False)[0:top_n_features]
-features_abs = (path_df.iloc[0] - path_df.iloc[-1]).sort_values(ascending=False)[0:top_n_features]
+features_abs = (path_df.iloc[0] - path_df.iloc[-1]
+                ).sort_values(ascending=False)[0:top_n_features]
 print(f'Top {top_n_features} features which vary: \n', features_std)
 # Then extract features to list
 volatile_feats = features_std.index.values
@@ -204,7 +201,7 @@ if graph:
     plt.rcParams['axes.labelweight'] = 'bold'
     plt.rcParams['xtick.labelsize'] = 8
     plt.rcParams['ytick.labelsize'] = 8
-    plt.rcParams['legend.fontsize'] = 10
+    plt.rcParams['legend.fontsize'] = 8
     plt.rcParams['figure.titlesize'] = 12
     probs = model.predict_proba(best_steps)
     rfd_probs = [item[1] for item in probs]
@@ -239,7 +236,6 @@ if graph:
     plt.savefig(
         "local_face/plots/RFD/RFD_{}_feats{}_seed{}".format(factual_type, top_n_features, seed))
     plt.show()
-
 print('Top features to track between examples:')
 print('factual info: ')
 print('certainty {}'.format(model.predict_proba(
@@ -251,7 +247,7 @@ tot_dist = 0
 for i in range(1, len(path_df.index)):
     print('instance {} with RFD certainty {}'.format(
         i, model.predict_proba([np.array(path_df.iloc[i])])[0, 1]))
-    inst = path_df.iloc[i-1:i+1]
+    inst = path_df_inversed_scaling.iloc[i-1:i+1]
     distance = np.linalg.norm(np.array(inst.iloc[0]) - np.array(inst.iloc[1]))
     tot_dist += distance
     print('distance between instances: {}'.format(distance))
