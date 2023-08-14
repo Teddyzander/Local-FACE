@@ -171,6 +171,13 @@ print('Total time taken: {} seconds'.format(
 
 # Create dataframe of path
 path_df = pd.DataFrame(best_steps, columns=features)
+# linear distance
+lin_dist = np.linalg.norm(best_steps[0] - best_steps[-1])
+# total distance
+tot_dist = 0
+for i in range(1, len(best_steps)):
+    tot_dist += np.linalg.norm(best_steps[i] - best_steps[i-1])
+print('Deviation Factor (linear distance/total distance): {}'.format(lin_dist/tot_dist))
 
 # And copy in the original unscaled space
 path_df_inversed_scaling = inverse_scaling(path_df, features)
@@ -241,17 +248,10 @@ print('factual info: ')
 print('certainty {}'.format(model.predict_proba(
     [np.array(path_df.iloc[0])])[0, 1]))
 print('feats: {}'.format(path_df.iloc[0]))
-lin_dist = np.linalg.norm(np.array(path_df.iloc[0] - path_df.iloc[-1]))
-print('linear distance to counterfactual: {}'.format(lin_dist))
-tot_dist = 0
 for i in range(1, len(path_df.index)):
     print('instance {} with RFD certainty {}'.format(
         i, model.predict_proba([np.array(path_df.iloc[i])])[0, 1]))
     inst = path_df_inversed_scaling.iloc[i-1:i+1]
-    distance = np.linalg.norm(np.array(inst.iloc[0]) - np.array(inst.iloc[1]))
-    tot_dist += distance
-    print('distance between instances: {}'.format(distance))
-    print('total distance from factual through previous points: {}'.format(tot_dist))
     temp = (inst.iloc[0] - inst.iloc[1]
             ).sort_values(ascending=False)[0:top_n_features]
     volatile_feats = temp.index.values
@@ -260,4 +260,3 @@ for i in range(1, len(path_df.index)):
     volatile_combined = inst.iloc[1][volatile_feats] - \
         inst.iloc[0][volatile_feats]
     print(volatile_combined)
-print('Deviation Score (actual dist/linear dist): {}'.format(lin_dist/tot_dist))
