@@ -115,12 +115,13 @@ def factual_selector(dataset, features, model, scale, seed=42, alignment='all_ne
 
 
 def inverse_scaling(data, features):
+
     print('Starting to inverse')
     print('Original data: \n', data)
 
     with open('rfd_model/standard_scaler.pkl', 'rb') as file:
         scaler = pickle.load(file)
 
-    inversed = scaler.inverse_transform(data)
+    inversed = pd.DataFrame(scaler.inverse_transform(data), columns=features)
 
     return inversed

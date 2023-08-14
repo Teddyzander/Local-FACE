@@ -24,7 +24,7 @@ bandwidth_search = False  # search for optimal bandwidth
 k = 10
 thresh = 0.75
 dist = 1
-seed = 13
+seed = 12
 method_type = 'strict'
 prob_dense = 0.001
 
@@ -88,13 +88,6 @@ print(f'Test set AUC performance {result:.3f}')
 # ---- select factual ----
 factual = factual_selector('mimic', features, model,
                            seed=seed, scale=scale, alignment=factual_type)
-
-# print(factual)
-
-# reverse scaling
-
-print(inverse_scaling(factual, features))
-
 
 # train density estimator using training data
 X_train_den = np.array(X_train)
@@ -179,10 +172,14 @@ print('Total time taken: {} seconds'.format(
 # Create dataframe of path
 path_df = pd.DataFrame(best_steps, columns=features)
 
+# And copy in the original unscaled space
+path_df_inversed_scaling = inverse_scaling(path_df, features)
+
 # Find most relevant / changing / volatile features to display
 # Identify features with largest std
 features_std = path_df.std().sort_values(ascending=False)[0:top_n_features]
-features_abs = (path_df.iloc[0] - path_df.iloc[-1]).sort_values(ascending=False)[0:top_n_features]
+features_abs = (path_df.iloc[0] - path_df.iloc[-1]
+                ).sort_values(ascending=False)[0:top_n_features]
 print(f'Top {top_n_features} features which vary: \n', features_std)
 # Then extract features to list
 volatile_feats = features_std.index.values
@@ -237,7 +234,6 @@ if graph:
     plt.savefig(
         "local_face/plots/RFD/RFD_{}_feats{}_seed{}".format(factual_type, top_n_features, seed))
     plt.show()
-
 print('Top features to track between examples:')
 print('factual info: ')
 print('certainty {}'.format(model.predict_proba(
@@ -249,7 +245,7 @@ tot_dist = 0
 for i in range(1, len(path_df.index)):
     print('instance {} with RFD certainty {}'.format(
         i, model.predict_proba([np.array(path_df.iloc[i])])[0, 1]))
-    inst = path_df.iloc[i-1:i+1]
+    inst = path_df_inversed_scaling.iloc[i-1:i+1]
     distance = np.linalg.norm(np.array(inst.iloc[0]) - np.array(inst.iloc[1]))
     tot_dist += distance
     print('distance between instances: {}'.format(distance))
