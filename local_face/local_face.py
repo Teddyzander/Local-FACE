@@ -36,7 +36,7 @@ class LocalFace:
         self.G = None
         self.prob = None
 
-    def find_cf(self, x0, k=10, thresh=0.9, mom=3, alpha=0.05):
+    def find_cf(self, x0, k=10, thresh=0.9, mom=3, alpha=0.05, target=1):
         """
         Find a valid counterfactual by searching through nearby data points using momentum
         Args:
@@ -45,6 +45,7 @@ class LocalFace:
             thresh: minimum value of probability classifier to terminate algorithm
             mom: positive int of number of last steps used to build momentum
             alpha: positive float of maximum step size when using momentum
+            target: 0 or 1, the target class
         Returns:
             steps: n by p array of p steps to get from x0 to a valid counterfactual
             cf: valid counterfactual (last entry in steps)
@@ -63,7 +64,7 @@ class LocalFace:
         # print(tree.data[close])
 
         # find probabilities of closest points
-        vals = self.model.predict_proba(tree.data[close])[:, 1]
+        vals = self.model.predict_proba(tree.data[close])[:, target]
 
         # save best move and delete from tree and rebuild
         indx = np.argmax(vals)
@@ -75,7 +76,7 @@ class LocalFace:
 
         # repeat until valid counterfactual is found
         i = 1
-        while self.model.predict_proba([x_hat])[0, 1] < thresh:
+        while self.model.predict_proba([x_hat])[0, target] < thresh:
             # find closes k points to x0
             nei = tree.query(steps[i], k=k, p=2)
             close = nei[1]
@@ -83,7 +84,7 @@ class LocalFace:
             # find weighted probabilities of closest points
             try:
                 vals = (1 / (1 + nei[0])) * \
-                    self.model.predict_proba(tree.data[close])[:, 1]
+                    self.model.predict_proba(tree.data[close])[:, target]
             except:
                 raise ValueError('Failed to find a counterfactual')
 
@@ -119,7 +120,7 @@ class LocalFace:
             i += 1
         return steps, cf
 
-    def generate_graph(self, x0, cf, k, thresh, tol, sample, method='strict', early=True):
+    def generate_graph(self, x0, cf, k, thresh, tol, sample, method='strict', early=False, target=1):
         """
         Find best path through data from x0 to counterfactual via query balls of radius dist
         Args:
@@ -129,6 +130,7 @@ class LocalFace:
             thresh: float of threshold of value for function in order to classify a
             point as a viable counterfactual
             early: bool for whether to terminate early if a closer counterfactual is found
+            target: 0 or 1 the target class
 
         Returns: n by p array of p steps to get from x0 to a valid counterfactual and a graph of the steps
         """
@@ -143,7 +145,7 @@ class LocalFace:
         i = 1
         while not np.array_equiv(xt, cf):
             # check if current point actually meets criteria
-            if self.model.predict_proba([xt])[0, 1] >= thresh and early:
+            if self.model.predict_proba([xt])[0, target] >= thresh and early:
                 print('Better solution located en route')
                 break
             # get vector of the best direction of travel
@@ -285,7 +287,7 @@ class LocalFace:
         """
         success = False
         prob = self.prob
-        threshold_reduction = 0.001
+        threshold_reduction = 1*10**(-13)
         while not success:
             try:
                 self.path = nx.shortest_path(

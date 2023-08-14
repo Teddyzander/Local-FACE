@@ -21,16 +21,19 @@ scale = True  # stanardised input data
 bandwidth_search = False  # search for optimal bandwidth
 
 # parameters for locating counterfactual and path
-k = 10
+k = 50
 thresh = 0.75
-dist = 1
-seed = 13
+dist = 0.5
+seed = 12
 method_type = 'strict'
-prob_dense = 0.001
+prob_dense = 1*10**(-12)
+target = 1
 
 # optionally, choose the type of factual:
 # 'FN', 'FP', 'TN', 'TP' or 'all_neg' for TN+FP
-factual_type = 'all_neg'
+factual_type = 'TN'
+if factual_type == 'FP' or factual_type == 'TP':
+    target = 0
 
 # Extract top n
 top_n_features = 4
@@ -64,9 +67,7 @@ if bandwidth_search:
     print(grid.best_params_)
     band_width = grid.best_params_['bandwidth']
 else:
-    band_width = 0.001
-
-band_width = 0.001
+    band_width = 0.0000001
 
 all_columns = X_train.columns
 
@@ -145,7 +146,7 @@ face = LocalFace(X_train, model, dense)  # constrained
 # find a counterfactual
 print(r"Finding counterfactual x' (explore)...")
 start_explore = time.time()
-steps, cf = face.find_cf(factual, k=k, thresh=thresh, mom=0)
+steps, cf = face.find_cf(factual, k=k, thresh=thresh, mom=0, target=target)
 print('Explore time taken: {} seconds'.format(
     np.round(time.time() - start_explore, 2)))
 overall_recourse = pd.DataFrame([factual - cf], columns=features)
@@ -155,7 +156,7 @@ print('---------------------------------')
 print(r'Creating graph G (Exploit)...')
 start_exploit = time.time()
 best_steps, G = face.generate_graph(
-    factual, cf, k, thresh, prob_dense, 10, early=True, method=method_type)
+    factual, cf, k, thresh, prob_dense, 10, early=True, method=method_type, target=target)
 # create edges between viable points and calculate the weights
 """prob = face.dense.score([factual])
 G = face.create_edges(1, 10, method='strict')"""
@@ -210,6 +211,8 @@ if graph:
     ax[0].plot(rfd_probs, '-k',
                label=('Probability Ready for Discharge')
                )
+    if factual_type == 'FP' or factual_type == 'TP':
+        thresh = 1 - thresh
     ax[0].axhline(thresh, color='red', linestyle='--',
                   linewidth='0.5', alpha=0.5, label='Discharge Threshold')
     ax[0].legend(fancybox=True, framealpha=0.3, loc='upper left')
@@ -220,7 +223,7 @@ if graph:
         print(i)
         ax[1].plot(ind_inst, abs_combined.iloc[:, i],
                    label=str(list(abs_combined.columns.values)[i]), linewidth=0.75)
-    ax[1].legend(loc='lower left', framealpha=0.3, fancybox=True)
+    ax[1].legend(framealpha=0.3, fancybox=True, ncol=top_n_features)
     ax[1].xaxis.set_major_locator(MaxNLocator(integer=True))
     ax[1].set_xlim([0, num_inst-1])
     ax[1].axhline(0, color='black', linestyle='--', linewidth='0.5')
@@ -228,7 +231,7 @@ if graph:
         print(i)
         ax[2].plot(ind_inst, volatile_combined.iloc[:, i],
                    label=str(list(volatile_combined.columns.values)[i]), linewidth=0.5)
-    ax[2].legend(loc='lower left', framealpha=0.3, fancybox=True)
+    ax[2].legend(framealpha=0.3, fancybox=True, ncol=top_n_features)
     ax[2].xaxis.set_major_locator(MaxNLocator(integer=True))
     ax[2].set_xlim([0, num_inst-1])
     ax[2].axhline(0, color='black', linestyle='--', linewidth='0.5')
