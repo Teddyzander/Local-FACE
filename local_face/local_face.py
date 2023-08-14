@@ -168,7 +168,7 @@ class LocalFace:
                     temp = (((1 + (np.dot(dir, v) / (dir_len * v_len))) / 2)
                             * self.dense.score([(xi + xt) / 2])) / dir_len
                     # temp = ((1 + (np.dot(dir, v) / (dir_len * v_len))) / 2) / vdir_len
-                    if temp > dot:
+                    if temp >= dot:
                         dot = temp
                         best = j
                         """prob = kde.score([xi])

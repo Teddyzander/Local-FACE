@@ -23,8 +23,8 @@ bandwidth_search = False  # search for optimal bandwidth
 # parameters for locating counterfactual and path
 k = 10
 thresh = 0.75
-dist = 0.5
-seed = 40
+dist = 1
+seed = 13
 method_type = 'strict'
 prob_dense = 0.001
 
@@ -33,7 +33,7 @@ prob_dense = 0.001
 factual_type = 'all_neg'
 
 # Extract top n
-top_n_features = 6
+top_n_features = 4
 
 # parameters for density model creation
 
@@ -64,7 +64,7 @@ if bandwidth_search:
     print(grid.best_params_)
     band_width = grid.best_params_['bandwidth']
 else:
-    band_width = 0.4736842105263158
+    band_width = 0.001
 
 band_width = 0.001
 
@@ -103,6 +103,8 @@ dense = KernelDensity(kernel='tophat', bandwidth=band_width).fit(X_train_den)
 # optionally constrain available datapoints to variables of interest
 upper_age = ">"+str(factual[20] + 0.5)
 lower_age = "<"+str(factual[20] - 0.5)
+upper_los = ">"+str(factual[19] + 2)
+lower_los = "<"+str(factual[19] - 2)
 constraints = [
     [],  # 'airway'
     [],  # 'fio2',
@@ -123,7 +125,7 @@ constraints = [
     [],  # 'creatinine',
     [],  # 'bun',
     [],  # 'bmi',
-    [],  # 'los',
+    [],  # [upper_los, lower_los],  # 'los',
     [upper_age, lower_age],  # 'age',
     ['!=' + str(factual[21])],  # 'sex'
 ]
@@ -180,18 +182,21 @@ path_df = pd.DataFrame(best_steps, columns=features)
 # Find most relevant / changing / volatile features to display
 # Identify features with largest std
 features_std = path_df.std().sort_values(ascending=False)[0:top_n_features]
+features_abs = (path_df.iloc[0] - path_df.iloc[-1]).sort_values(ascending=False)[0:top_n_features]
 print(f'Top {top_n_features} features which vary: \n', features_std)
 # Then extract features to list
 volatile_feats = features_std.index.values
+abs_feats = features_abs.index.values
 
 # Then extract these relevant columns from the path dataframe (combined)
 volatile_combined = path_df[volatile_feats]
+abs_combined = path_df[abs_feats]
 
 print('Top features to track overall: \n', volatile_combined)
 
 if graph:
     # Plot probabilites over the path
-    fig, ax = plt.subplots(2, 1, sharex=True)
+    fig, ax = plt.subplots(3, 1, sharex=True)
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.monospace'] = 'Ubuntu Mono'
     plt.rcParams['font.size'] = 10
@@ -208,19 +213,27 @@ if graph:
                )
     ax[0].axhline(thresh, color='red', linestyle='--',
                   linewidth='0.5', alpha=0.5, label='Discharge Threshold')
-    ax[0].legend(fancybox=True, framealpha=0.3)
+    ax[0].legend(fancybox=True, framealpha=0.3, loc='upper left')
     ax[0].set_ylim([0, 1])
     num_inst = len(path_df.index)
     ind_inst = np.arange(0, num_inst)
     for i in range(top_n_features):
         print(i)
-        ax[1].plot(ind_inst, volatile_combined.iloc[:, i],
-                   label=str(list(volatile_combined.columns.values)[i]), linewidth=0.5)
+        ax[1].plot(ind_inst, abs_combined.iloc[:, i],
+                   label=str(list(abs_combined.columns.values)[i]), linewidth=0.75)
     ax[1].legend(loc='lower left', framealpha=0.3, fancybox=True)
     ax[1].xaxis.set_major_locator(MaxNLocator(integer=True))
     ax[1].set_xlim([0, num_inst-1])
-    ax[1].axhline(0, color='black', linestyle='--', linewidth='0.5', alpha=0.5)
-
+    ax[1].axhline(0, color='black', linestyle='--', linewidth='0.5')
+    for i in range(top_n_features):
+        print(i)
+        ax[2].plot(ind_inst, volatile_combined.iloc[:, i],
+                   label=str(list(volatile_combined.columns.values)[i]), linewidth=0.5)
+    ax[2].legend(loc='lower left', framealpha=0.3, fancybox=True)
+    ax[2].xaxis.set_major_locator(MaxNLocator(integer=True))
+    ax[2].set_xlim([0, num_inst-1])
+    ax[2].axhline(0, color='black', linestyle='--', linewidth='0.5')
+    ax[2].set_xlabel('Recourse Sequence')
     plt.savefig(
         "local_face/plots/RFD/RFD_{}_feats{}_seed{}".format(factual_type, top_n_features, seed))
     plt.show()
