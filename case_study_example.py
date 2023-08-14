@@ -24,7 +24,7 @@ bandwidth_search = False  # search for optimal bandwidth
 k = 10
 thresh = 0.75
 dist = 0.5
-seed = 42
+seed = 40
 method_type = 'strict'
 prob_dense = 0.001
 
@@ -59,7 +59,7 @@ X_test, y_test = load_dataset('mimic',
 if bandwidth_search:
     grid = GridSearchCV(KernelDensity(kernel='tophat'),
                         {'bandwidth': np.linspace(0.00001, 0.001, 1000)},
-                        cv=20) # 20-fold cross-validation
+                        cv=20)  # 20-fold cross-validation
     grid.fit(X_train)
     print(grid.best_params_)
     band_width = grid.best_params_['bandwidth']
@@ -93,7 +93,8 @@ factual = factual_selector('mimic', features, model,
 
 # reverse scaling
 
-# print(reverse_scaling('mimic', features, factual))
+print(inverse_scaling(factual, features))
+
 
 # train density estimator using training data
 X_train_den = np.array(X_train)
