@@ -23,7 +23,7 @@ bandwidth_search = False  # search for optimal bandwidth
 k = 50
 thresh = 0.75
 dist = 1
-seed = 12
+seed = 90
 method_type = 'strict'
 prob_dense = 1*10**(-12)
 target = 1
@@ -35,7 +35,7 @@ if factual_type == 'FP' or factual_type == 'TP':
     target = 0
 
 # Extract top n
-top_n_features = 4
+top_n_features = 7
 
 # parameters for density model creation
 
@@ -180,7 +180,7 @@ for i in range(1, len(best_steps)):
 print('Deviation Factor (linear distance/total distance): {}'.format(lin_dist/tot_dist))
 
 # And copy in the original unscaled space
-path_df_inversed_scaling = inverse_scaling(path_df, features)
+path_df_inversed_scaling = inverse_scaling(path_df, features, True)
 
 # Find most relevant / changing / volatile features to display
 # Identify features with largest std
@@ -247,16 +247,17 @@ print('Top features to track between examples:')
 print('factual info: ')
 print('certainty {}'.format(model.predict_proba(
     [np.array(path_df.iloc[0])])[0, 1]))
-print('feats: {}'.format(path_df.iloc[0]))
+print('feats: {}'.format(inverse_scaling(path_df, features).iloc[0]))
 for i in range(1, len(path_df.index)):
     print('instance {} with RFD certainty {}'.format(
         i, model.predict_proba([np.array(path_df.iloc[i])])[0, 1]))
-    inst = path_df_inversed_scaling.iloc[i-1:i+1]
+    inst = path_df.iloc[i-1:i+1]
     temp = (inst.iloc[0] - inst.iloc[1]
             ).sort_values(ascending=False)[0:top_n_features]
     volatile_feats = temp.index.values
 
+    path_df_inversed_scaling = inverse_scaling(path_df, features)
     # Then extract these relevant columns from the path dataframe (combined)
-    volatile_combined = inst.iloc[1][volatile_feats] - \
-        inst.iloc[0][volatile_feats]
+    volatile_combined = path_df_inversed_scaling.iloc[i-1][volatile_feats] - \
+        path_df_inversed_scaling.iloc[i][volatile_feats]
     print(volatile_combined)

@@ -114,10 +114,10 @@ def factual_selector(dataset, features, model, scale, seed=42, alignment='all_ne
     return factual
 
 
-def inverse_scaling(data, features):
-
-    print('Starting to inverse')
-    print('Original data: \n', data)
+def inverse_scaling(data, features, printer=False):
+    if printer == True:
+        print('Starting to inverse')
+        print('Original data: \n', data)
 
     with open('rfd_model/standard_scaler.pkl', 'rb') as file:
         scaler = pickle.load(file)
