@@ -28,6 +28,12 @@ def load_dataset(dataset_name):
         dataset_file_path = "{}{}".format(dataset_folder_path, "mnist/mnist_train.csv")
         dataset_df = pd.read_csv(dataset_file_path, delimiter=",", header=None, dtype=np.uint8)
         X, y = process_mnist(dataset_df)
+
+    # load mimic dataset
+    elif dataset_name == "mimic":
+        dataset_file_path = "{}{}".format(dataset_folder_path, "fm_MIMIC_COMPLETECASE_original.csv")
+        dataset_df = pd.read_csv(dataset_file_path, header=0, engine="python")
+        X, y = process_mimic(dataset_df)
     
     return X, y
 
@@ -88,3 +94,21 @@ def process_mnist(data_df):
     y = y[list(all_indices)]
 
     return X, y
+
+def process_mimic(data_df):
+
+    """ MIMIC dataset cleaned by Chris McWilliams for https://bmjopen.bmj.com/content/9/3/e025925
+
+    Args:
+        data_df (DataFrame): a dataframe file with raw input
+
+    Returns:
+        X: features of all data instances in a dataframe (features are not normalised)
+        y: labels of all data instances as a numpy array
+    """
+
+    X = data_df.iloc[:, 1:-2]
+    y = data_df.iloc[:, -1:]  # 1 == ready for discharge
+
+    return X, y
+

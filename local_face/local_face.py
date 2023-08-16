@@ -36,7 +36,7 @@ class LocalFace:
         self.G = None
         self.prob = None
 
-    def find_cf(self, x0, k=10, thresh=0.9, mom=3, alpha=0.05):
+    def find_cf(self, x0, k=10, thresh=0.9, mom=3, alpha=0.05, target=1):
         """
         Find a valid counterfactual by searching through nearby data points using momentum
         Args:
@@ -45,20 +45,26 @@ class LocalFace:
             thresh: minimum value of probability classifier to terminate algorithm
             mom: positive int of number of last steps used to build momentum
             alpha: positive float of maximum step size when using momentum
+            target: 0 or 1, the target class
         Returns:
             steps: n by p array of p steps to get from x0 to a valid counterfactual
             cf: valid counterfactual (last entry in steps)
         """
-        steps = np.zeros((2, 2))
+
+        steps = np.zeros((2, len(x0)))  # Adaptable shape
         steps[0] = x0
+
         # set up tree for k nearest neighbours
         tree = spatial.KDTree(self.data)
 
-        # find closes k points to x0
+        # find closest k points to x0
         close = tree.query(x0, k=k, p=2)[1]
 
+        # print(close)
+        # print(tree.data[close])
+
         # find probabilities of closest points
-        vals = self.model.predict_proba(tree.data[close])[:, 1]
+        vals = self.model.predict_proba(tree.data[close])[:, target]
 
         # save best move and delete from tree and rebuild
         indx = np.argmax(vals)
@@ -70,13 +76,17 @@ class LocalFace:
 
         # repeat until valid counterfactual is found
         i = 1
-        while self.model.predict_proba([x_hat])[0, 1] < thresh:
+        while self.model.predict_proba([x_hat])[0, target] < thresh:
             # find closes k points to x0
             nei = tree.query(steps[i], k=k, p=2)
             close = nei[1]
 
             # find weighted probabilities of closest points
-            vals = (1 / (1 + nei[0])) * self.model.predict_proba(tree.data[close])[:, 1]
+            try:
+                vals = (1 / (1 + nei[0])) * \
+                    self.model.predict_proba(tree.data[close])[:, target]
+            except:
+                raise ValueError('Failed to find a counterfactual')
 
             # save best move and delete from tree and rebuild
             indx = np.argmax(vals)
@@ -110,7 +120,7 @@ class LocalFace:
             i += 1
         return steps, cf
 
-    def generate_graph(self, x0, cf, k, thresh, tol, sample, method='strict', early=True):
+    def generate_graph(self, x0, cf, k, thresh, tol, sample, method='strict', early=False, target=1):
         """
         Find best path through data from x0 to counterfactual via query balls of radius dist
         Args:
@@ -120,12 +130,13 @@ class LocalFace:
             thresh: float of threshold of value for function in order to classify a
             point as a viable counterfactual
             early: bool for whether to terminate early if a closer counterfactual is found
+            target: 0 or 1 the target class
 
         Returns: n by p array of p steps to get from x0 to a valid counterfactual and a graph of the steps
         """
         xt = x0
         self.prob = tol
-        steps = np.zeros((1, 2))
+        steps = np.zeros((1, len(x0)))
         steps[0] = x0
         # set up tree for k nearest neighbours
         tree = spatial.KDTree(self.data)
@@ -134,7 +145,7 @@ class LocalFace:
         i = 1
         while not np.array_equiv(xt, cf):
             # check if current point actually meets criteria
-            if self.model.predict_proba([xt])[0, 1] >= thresh and early:
+            if self.model.predict_proba([xt])[0, target] >= thresh and early:
                 print('Better solution located en route')
                 break
             # get vector of the best direction of travel
@@ -146,14 +157,20 @@ class LocalFace:
             # find viable point that is along the path of best direction
             dot = -np.inf
             for j in indx[1]:
-                xi = tree.data[j]
+                xi = np.array(tree.data[j])
+                # print(xi)
                 v = xt - xi
                 v_len = np.linalg.norm(v, ord=2)
                 vdir_len = np.linalg.norm(cf - xi, ord=2)
                 if v_len != 0:
-                    temp = (((1 + (np.dot(dir, v) / (dir_len * v_len))) / 2) * self.dense.score([(xi + xt) / 2])) / dir_len
+                    # print(dir)
+                    # print(v)
+                    # print(np.dot(dir, v))
+                    # print((xi + xt))
+                    temp = (((1 + (np.dot(dir, v) / (dir_len * v_len))) / 2)
+                            * self.dense.score([(xi + xt) / 2])) / dir_len
                     # temp = ((1 + (np.dot(dir, v) / (dir_len * v_len))) / 2) / vdir_len
-                    if temp > dot:
+                    if temp >= dot:
                         dot = temp
                         best = j
                         """prob = kde.score([xi])
@@ -184,21 +201,32 @@ class LocalFace:
                 G.add_node(i)
                 # find and calculate edges
                 for l in range(i):
-                    test = np.array([np.linspace(steps[i][0], steps[l][0], sample + 1),
-                                        np.linspace(steps[i][1], steps[l][1], sample + 1)]).T
                     samples = np.zeros((len(steps[i]), sample + 1))
                     for u in range(len(samples)):
-                        samples[u] = np.linspace(steps[i][u], steps[l][u], sample + 1)
+                        if len(samples) > 2:
+                            if u == 0 or u == 21:
+                                temp1 = np.ones(
+                                    int(np.ceil((sample + 1) / 2))) * steps[i][u]
+                                temp2 = np.ones(
+                                    int(np.floor((sample + 1) / 2))) * steps[l][u]
+                                samples[u] = np.concatenate((temp1, temp2))
+                            else:
+                                samples[u] = np.linspace(
+                                    steps[i][u], steps[l][u], sample + 1)
+                        else:
+                            samples[u] = np.linspace(
+                                steps[i][u], steps[l][u], sample + 1)
                     samples = np.array(samples).T
 
                     score = np.exp(self.dense.score_samples(samples))
-                    test = np.exp(np.sum(score) / (sample + 1))
+                    test = np.sum(score) / (sample + 1)
                     if method == 'avg':
                         w = np.linalg.norm(steps[i] - steps[l], ord=2) * test
                         G.add_edge(i, l, weight=w)
                     elif method == 'strict':
                         if all(k >= tol for k in score):
-                            w = np.linalg.norm(steps[i] - steps[l], ord=2) * test
+                            w = np.linalg.norm(
+                                steps[i] - steps[l], ord=2) * test
                             G.add_edge(i, l, weight=w)
 
             i += 1
@@ -213,25 +241,37 @@ class LocalFace:
         Args:
         Returns: Connected graph
         """
-        """self.G = nx.Graph()
-        for i in range(len(self.steps)):
-            self.G.add_node(i)"""
-
         for i in range(len(self.steps)):
             for j in range(i):
                 if np.linalg.norm(self.steps[i] - self.steps[j]) > 0:
-                    samples = np.array([np.linspace(self.steps[i][0], self.steps[j][0], sample + 1),
-                                        np.linspace(self.steps[i][1], self.steps[j][1], sample + 1)]).T
-                    score = self.dense.score_samples(samples)
+                    if len(self.steps[i]) == 2:
+                        samples = np.array([np.linspace(self.steps[i][0], self.steps[j][0], sample + 1),
+                                            np.linspace(self.steps[i][1], self.steps[j][1], sample + 1)])
+                    else:
+                        samples = np.zeros((len(self.steps[i]), sample + 1))
+                        for u in range(len(samples)):
+                            if len(samples) > 2:
+                                if u == 0 or u == 21:
+                                    temp1 = np.ones(
+                                        int(np.ceil((sample + 1) / 2))) * self.steps[i][u]
+                                    temp2 = np.ones(
+                                        int(np.floor((sample + 1) / 2))) * self.steps[j][u]
+                                    samples[u] = np.concatenate((temp1, temp2))
+                                else:
+                                    samples[u] = np.linspace(
+                                        self.steps[i][u], self.steps[j][u], sample + 1)
+                    samples = np.array(samples).T
+                    score = np.exp(self.dense.score_samples(samples))
+                    test = np.sum(score) / (sample + 1)
                     if method == 'avg':
-                        test = (np.sum(score) / (sample + 1))
                         if test > tol:
-                            w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2) / test
+                            w = np.linalg.norm(
+                                self.steps[i] - self.steps[j], ord=2) * test
                             self.G.add_edge(i, j, weight=w)
                     elif method == 'strict':
                         if all(k >= tol for k in score):
-                            test = (np.sum(score) / (sample + 1))
-                            w = np.linalg.norm(self.steps[i] - self.steps[j], ord=2) / test
+                            w = np.linalg.norm(
+                                self.steps[i] - self.steps[j], ord=2) * test
                             self.G.add_edge(i, j, weight=w)
                     else:
                         print('no method selected')
@@ -239,7 +279,7 @@ class LocalFace:
 
         return self.G
 
-    def shortest_path(self):
+    def shortest_path(self, method='strict'):
         """
         Calculate shortest path from factual to counterfactual
         Returns: shortest path through nodes
@@ -247,13 +287,16 @@ class LocalFace:
         """
         success = False
         prob = self.prob
+        threshold_reduction = 1*10**(-13)
         while not success:
             try:
-                self.path = nx.shortest_path(self.G, source=0, target=int(self.G.number_of_nodes() - 1))
+                self.path = nx.shortest_path(
+                    self.G, source=0, target=int(self.G.number_of_nodes() - 1))
                 success = True
             except:
-                print('No path found, lowering probability density')
-                prob = prob - 0.1
-                self.create_edges(tol=prob)
+                print(
+                    f'No path found, lowering probability density')
+                prob = prob - threshold_reduction
+                self.create_edges(tol=prob, method=method)
         print('Completed with density probability: {}'.format(prob))
         return self.path

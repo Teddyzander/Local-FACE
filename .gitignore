@@ -144,5 +144,10 @@ dmypy.json
 # test results
 *.html
 
+# RFD data
+/rfd_model/fms
+/rfd_model/results/legacy
+/rfd_model *csv
+
 # MacOS
 .DS_Store
