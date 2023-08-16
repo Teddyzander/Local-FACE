@@ -23,19 +23,20 @@ bandwidth_search = False  # search for optimal bandwidth
 k = 50
 thresh = 0.75
 dist = 1
-seed = 90
+seed = 2
 method_type = 'strict'
 prob_dense = 1*10**(-12)
 target = 1
 
 # optionally, choose the type of factual:
 # 'FN', 'FP', 'TN', 'TP' or 'all_neg' for TN+FP
-factual_type = 'TN'
+factual_type = 'FP'
+
 if factual_type == 'FP' or factual_type == 'TP':
     target = 0
 
 # Extract top n
-top_n_features = 7
+top_n_features = 4
 
 # parameters for density model creation
 
@@ -92,6 +93,7 @@ factual = factual_selector('mimic', features, model,
 # train density estimator using training data
 X_train_den = np.array(X_train)
 dense = KernelDensity(kernel='tophat', bandwidth=band_width).fit(X_train_den)
+
 
 # optionally constrain available datapoints to variables of interest
 upper_age = ">"+str(factual[20] + 0.5)
@@ -180,7 +182,7 @@ for i in range(1, len(best_steps)):
 print('Deviation Factor (linear distance/total distance): {}'.format(lin_dist/tot_dist))
 
 # And copy in the original unscaled space
-path_df_inversed_scaling = inverse_scaling(path_df, features, True)
+path_df_inversed_scaling = inverse_scaling(path_df, features)
 
 # Find most relevant / changing / volatile features to display
 # Identify features with largest std
@@ -200,37 +202,45 @@ print('Top features to track overall: \n', volatile_combined)
 
 if graph:
     # Plot probabilites over the path
-    fig, ax = plt.subplots(3, 1, sharex=True)
+    fig, ax = plt.subplots(2, 1, sharex=True, figsize=(5.5, 5))
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.monospace'] = 'Ubuntu Mono'
-    plt.rcParams['font.size'] = 10
-    plt.rcParams['axes.labelsize'] = 10
+    plt.rcParams['font.size'] = 12
+    plt.rcParams['axes.labelsize'] = 12
     plt.rcParams['axes.labelweight'] = 'bold'
-    plt.rcParams['xtick.labelsize'] = 8
-    plt.rcParams['ytick.labelsize'] = 8
-    plt.rcParams['legend.fontsize'] = 8
+    plt.rcParams['xtick.labelsize'] = 12
+    plt.rcParams['ytick.labelsize'] = 12
+    plt.rcParams['legend.fontsize'] = 12
     plt.rcParams['figure.titlesize'] = 12
     probs = model.predict_proba(best_steps)
     rfd_probs = [item[1] for item in probs]
-    ax[0].plot(rfd_probs, '-k',
-               label=('Probability Ready for Discharge')
-               )
+    line_width = 2
+    if factual_type == 'FP' or factual_type == 'TP':
+        ax[0].plot(rfd_probs, '-k',
+                   label=('Probability Not Ready for Discharge'),
+                   linewidth=line_width)
+    else:
+        ax[0].plot(rfd_probs, '-k',
+                   label=('Probability Ready for Discharge'),
+                   linewidth=line_width)
     if factual_type == 'FP' or factual_type == 'TP':
         thresh = 1 - thresh
     ax[0].axhline(thresh, color='red', linestyle='--',
-                  linewidth='0.5', alpha=0.5, label='Discharge Threshold')
-    ax[0].legend(fancybox=True, framealpha=0.3, loc='upper left')
+                  linewidth=line_width, alpha=0.5, label='Discharge Threshold')
+    ax[0].legend(fancybox=True, framealpha=0.3)
     ax[0].set_ylim([0, 1])
     num_inst = len(path_df.index)
     ind_inst = np.arange(0, num_inst)
     for i in range(top_n_features):
         print(i)
         ax[1].plot(ind_inst, abs_combined.iloc[:, i],
-                   label=str(list(abs_combined.columns.values)[i]), linewidth=0.75)
-    ax[1].legend(framealpha=0.3, fancybox=True, ncol=top_n_features)
+                   label=str(list(abs_combined.columns.values)[i]), linewidth=line_width)
+    ax[1].legend(framealpha=0.3,
+                 fancybox=True, ncol=2)
     ax[1].xaxis.set_major_locator(MaxNLocator(integer=True))
     ax[1].set_xlim([0, num_inst-1])
-    ax[1].axhline(0, color='black', linestyle='--', linewidth='0.5')
+    ax[1].axhline(0, color='black', linestyle='--', linewidth=line_width)
+    '''
     for i in range(top_n_features):
         print(i)
         ax[2].plot(ind_inst, volatile_combined.iloc[:, i],
@@ -238,10 +248,12 @@ if graph:
     ax[2].legend(framealpha=0.3, fancybox=True, ncol=top_n_features)
     ax[2].xaxis.set_major_locator(MaxNLocator(integer=True))
     ax[2].set_xlim([0, num_inst-1])
-    ax[2].axhline(0, color='black', linestyle='--', linewidth='0.5')
-    ax[2].set_xlabel('Recourse Sequence')
+    ax[2].axhline(0, color='black', linestyle='--', linewidth='0.75')
+    '''
+    ax[1].set_xlabel('Recourse Sequence', fontsize=12)
+    plt.tight_layout()
     plt.savefig(
-        "local_face/plots/RFD/RFD_{}_feats{}_seed{}".format(factual_type, top_n_features, seed))
+        "local_face/plots/RFD/RFD_{}_feats{}_seed{}.pdf".format(factual_type, top_n_features, seed))
     plt.show()
 print('Top features to track between examples:')
 print('factual info: ')
