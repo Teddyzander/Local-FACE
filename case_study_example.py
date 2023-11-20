@@ -15,15 +15,15 @@ from sklearn.model_selection import GridSearchCV
 
 warnings.filterwarnings("ignore")
 
-graph = True  # plotting
+graph = False  # plotting
 scale = True  # stanardised input data
 bandwidth_search = False  # search for optimal bandwidth
 
 # parameters for locating counterfactual and path
 k = 50
 thresh = 0.75
-dist = 1
-seed = 2
+dist = 10
+seed = 1
 method_type = 'strict'
 prob_dense = 1*10**(-12)
 target = 1
@@ -120,7 +120,7 @@ constraints = [
     [],  # 'creatinine',
     [],  # 'bun',
     [],  # 'bmi',
-    [],  # [upper_los, lower_los],  # 'los',
+    [upper_los, lower_los],  # [upper_los, lower_los],  # 'los',
     [upper_age, lower_age],  # 'age',
     ['!=' + str(factual[21])],  # 'sex'
 ]
@@ -182,7 +182,7 @@ for i in range(1, len(best_steps)):
 print('Deviation Factor (linear distance/total distance): {}'.format(lin_dist/tot_dist))
 
 # And copy in the original unscaled space
-path_df_inversed_scaling = inverse_scaling(path_df, features)
+# path_df_inversed_scaling = inverse_scaling(path_df, features)
 
 # Find most relevant / changing / volatile features to display
 # Identify features with largest std
@@ -255,7 +255,85 @@ if graph:
     plt.savefig(
         "local_face/plots/RFD/RFD_{}_feats{}_seed{}.pdf".format(factual_type, top_n_features, seed))
     plt.show()
-print('Top features to track between examples:')
+else:
+    fig, ax = plt.subplots(3, 2, sharex=True, figsize=(10, 10))
+    plt.rcParams['font.family'] = 'serif'
+    plt.rcParams['font.monospace'] = 'Ubuntu Mono'
+    plt.rcParams['font.size'] = 12
+    plt.rcParams['axes.labelsize'] = 12
+    plt.rcParams['axes.labelweight'] = 'bold'
+    plt.rcParams['xtick.labelsize'] = 12
+    plt.rcParams['ytick.labelsize'] = 12
+    plt.rcParams['legend.fontsize'] = 9.5
+    plt.rcParams['figure.titlesize'] = 12
+    probs = model.predict_proba(best_steps)
+    rfd_probs = [item[1] for item in probs]
+    line_width = 2
+    examples = range(0, len(path_df.index))
+    if factual_type == 'FP' or factual_type == 'TP':
+        ax[0, 0].plot(rfd_probs, '-k',
+                   label=('Probability Not Ready for Discharge'),
+                   linewidth=line_width)
+    else:
+        ax[0, 0].plot(rfd_probs, '-k',
+                   label=('Probability Ready for Discharge'),
+                   linewidth=line_width)
+    if factual_type == 'FP' or factual_type == 'TP':
+        thresh = 1 - thresh
+    ax[0, 0].axhline(thresh, color='red', linestyle='--',
+                  linewidth=line_width, alpha=0.5, label='Discharge Threshold')
+    ax[0, 0].legend(fancybox=True, framealpha=0.3)
+    ax[0, 0].set_ylim([0, 1])
+    ax[0, 0].set_title('Readiness for Discharge Score')
+    ax[2, 1].set_xlim([0, len(path_df.index) - 1])
+
+    ax[1, 0].set_title('Respiration Metrics')
+    ax[1, 0].axhline(0, color='black', linestyle='--', linewidth=line_width)
+    ax[1, 0].plot(examples, path_df['airway'], label='airway', linewidth=line_width)
+    ax[1, 0].plot(examples, path_df['fio2'], label='fio2', linewidth=line_width)
+    ax[1, 0].plot(examples, path_df['spo2_min'], label='spo2_min', linewidth=line_width)
+    ax[1, 0].plot(examples, path_df['hco3'], label='hco3', linewidth=line_width)
+    ax[1, 0].plot(examples, path_df['resp_min'], label='resp_min', linewidth=line_width)
+    ax[1, 0].plot(examples, path_df['resp_max'], label='resp_max', linewidth=line_width)
+    ax[1, 0].legend(fancybox=True, framealpha=0.3, ncol=3)
+
+    ax[2, 0].set_title('Cardiovascular Metrics')
+    ax[2, 0].axhline(0, color='black', linestyle='--', linewidth=line_width)
+    ax[2, 0].plot(examples, path_df['bp_min'], label='bp_min', linewidth=line_width)
+    ax[2, 0].plot(examples, path_df['hr_min'], label='hr_min', linewidth=line_width)
+    ax[2, 0].plot(examples, path_df['hr_max'], label='hr_max', linewidth=line_width)
+    ax[2, 0].legend(fancybox=True, framealpha=0.3, ncol=3)
+
+    ax[0, 1].set_title('CNS Metrics')
+    ax[0, 1].axhline(0, color='black', linestyle='--', linewidth=line_width)
+    ax[0, 1].plot(examples, path_df['pain'], label='pain', linewidth=line_width)
+    ax[0, 1].plot(examples, path_df['gcs_min'], label='gcs_min', linewidth=line_width)
+    ax[0, 1].plot(examples, path_df['temp_min'], label='temp_min', linewidth=line_width)
+    ax[0, 1].plot(examples, path_df['temp_max'], label='temp_max', linewidth=line_width)
+    ax[0, 1].legend(fancybox=True, framealpha=0.3, ncol=3)
+
+    ax[1, 1].set_title('Blood Metrics')
+    ax[1, 1].axhline(0, color='black', linestyle='--', linewidth=line_width)
+    ax[1, 1].plot(examples, path_df['haemoglobin'], label='haemoglobin', linewidth=line_width)
+    ax[1, 1].plot(examples, path_df['k'], label='k', linewidth=line_width)
+    ax[1, 1].plot(examples, path_df['na'], label='na', linewidth=line_width)
+    ax[1, 1].plot(examples, path_df['creatinine'], label='creatinine', linewidth=line_width)
+    ax[1, 1].plot(examples, path_df['bun'], label='bun', linewidth=line_width)
+    ax[1, 1].legend(fancybox=True, framealpha=0.3, ncol=3)
+
+    ax[2, 1].set_title('Demographics')
+    ax[2, 1].axhline(0, color='black', linestyle='--', linewidth=line_width)
+    ax[2, 1].plot(examples, path_df['los'], label='los', linewidth=line_width)
+    ax[2, 1].plot(examples, path_df['age'], label='age', linewidth=line_width)
+    ax[2, 1].plot(examples, path_df['sex'], label='sex', linewidth=line_width)
+    ax[2, 1].plot(examples, path_df['bmi'], label='bmi', linewidth=line_width)
+    ax[2, 1].legend(fancybox=True, framealpha=0.3, ncol=3)
+    plt.savefig(
+        "local_face/plots/RFD/full_panel_RFD_{}_feats{}_seed{}.pdf".format(factual_type, top_n_features, seed))
+
+    plt.show()
+
+"""print('Top features to track between examples:')
 print('factual info: ')
 print('certainty {}'.format(model.predict_proba(
     [np.array(path_df.iloc[0])])[0, 1]))
@@ -272,4 +350,4 @@ for i in range(1, len(path_df.index)):
     # Then extract these relevant columns from the path dataframe (combined)
     volatile_combined = path_df_inversed_scaling.iloc[i-1][volatile_feats] - \
         path_df_inversed_scaling.iloc[i][volatile_feats]
-    print(volatile_combined)
+    print(volatile_combined)"""
