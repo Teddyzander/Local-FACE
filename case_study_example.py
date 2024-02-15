@@ -23,14 +23,14 @@ bandwidth_search = False  # search for optimal bandwidth
 k = 50
 thresh = 0.75
 dist = 1
-seed = 2
+seed = 7
 method_type = 'strict'
 prob_dense = 1*10**(-12)
 target = 1
 
 # optionally, choose the type of factual:
 # 'FN', 'FP', 'TN', 'TP' or 'all_neg' for TN+FP
-factual_type = 'FP'
+factual_type = 'TN'
 
 if factual_type == 'FP' or factual_type == 'TP':
     target = 0
@@ -94,10 +94,22 @@ factual = factual_selector('mimic', features, model,
 X_train_den = np.array(X_train)
 dense = KernelDensity(kernel='tophat', bandwidth=band_width).fit(X_train_den)
 
+# how far from the current value we allow a change in age
+age_range = 0.5  # years
+
+if scale:
+    age_lower, age_higher = feature_constrain_range(
+        factual, features, 'age', age_range)
+
+else:
+    age_lower = factual['age'] - age_range
+    age_higher = factual['age'] + age_range
+
+# print('age range_lower', age_lower, 'age range_higher', age_higher)
 
 # optionally constrain available datapoints to variables of interest
-upper_age = ">"+str(factual[20] + 0.5)
-lower_age = "<"+str(factual[20] - 0.5)
+upper_age = ">"+str(age_higher)
+lower_age = "<"+str(age_lower)
 upper_los = ">"+str(factual[19] + 2)
 lower_los = "<"+str(factual[19] - 2)
 constraints = [
@@ -199,6 +211,7 @@ volatile_combined = path_df[volatile_feats]
 abs_combined = path_df[abs_feats]
 
 print('Top features to track overall: \n', volatile_combined)
+print('Unscaled top features:', path_df_inversed_scaling[volatile_feats])
 
 if graph:
     # Plot probabilites over the path

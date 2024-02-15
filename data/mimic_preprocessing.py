@@ -108,6 +108,8 @@ def factual_selector(dataset, features, model, scale, seed=42, alignment='all_ne
 
     print(f'Randomly selected {alignment} case: \n', factual)
 
+    print(factual.columns)
+
     factual = factual[features]
     factual = np.array(factual)[0]
 
@@ -121,3 +123,40 @@ def inverse_scaling(data, features):
     inversed = pd.DataFrame(scaler.inverse_transform(data), columns=features)
 
     return inversed
+
+
+def scaling(data, features):
+    with open('rfd_model/standard_scaler.pkl', 'rb') as file:
+        scaler = pickle.load(file)
+
+    scaled = pd.DataFrame(scaler.transform(data), columns=features)
+
+    return scaled
+
+
+def feature_constrain_range(factual, features, feature, constrain_range):
+
+    print(f'--- processing for feature {feature} ---')
+    # first, get unscaled original feature value
+    unscaled = inverse_scaling(
+        pd.DataFrame(factual.reshape(-1, len(factual)), columns=features), features)
+
+    # get lower value, first in unscaled range
+    unscaled[feature] = unscaled[feature] - constrain_range
+    # Now get scaled lower age
+    scaled = scaling(unscaled, features)
+    lower_value = scaled[feature][0]
+
+    unscaled = inverse_scaling(
+        pd.DataFrame(factual.reshape(-1, len(factual)), columns=features), features)
+
+    # get higher value, first in unscaled range
+    unscaled = unscaled
+    unscaled[feature] = unscaled[feature] + constrain_range
+    # Now get scaled higher age
+    scaled = scaling(unscaled, features)
+    upper_value = scaled[feature][0]
+
+    print(f'scaled allowable {feature} range {lower_value} - {upper_value}')
+
+    return lower_value, upper_value
