@@ -12,6 +12,7 @@ import pickle
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 from sklearn.model_selection import GridSearchCV
+import seaborn as sns
 
 warnings.filterwarnings("ignore")
 
@@ -36,7 +37,7 @@ if factual_type == 'FP' or factual_type == 'TP':
     target = 0
 
 # Extract top n
-top_n_features = 4
+top_n_features = 10
 
 # parameters for density model creation
 
@@ -202,6 +203,7 @@ print('Path in unscaled units', path_df_inversed_scaling)
 # Find most relevant / changing / volatile features to display
 # Identify features with largest std
 features_std = path_df.std().sort_values(ascending=False)[0:top_n_features]
+# Absolute largest change in feature value between factual and counterfactual
 features_abs = (path_df.iloc[0] - path_df.iloc[-1]
                 ).sort_values(ascending=False)[0:top_n_features]
 print(f'Top {top_n_features} features which vary: \n', features_std)
@@ -215,6 +217,61 @@ abs_combined = path_df[abs_feats]
 
 print('Top features to track overall: \n', volatile_combined)
 print('Unscaled top features:', path_df_inversed_scaling[volatile_feats])
+
+unscaled_abs_combined = path_df_inversed_scaling[abs_feats]
+
+safe_bound = 0.25
+
+
+if graph:
+    # Plot probabilites over the path, scaled, with "healthy" region
+    fig, ax = plt.subplots(2, 1, sharex=True, figsize=(5.5, 5))
+    plt.rcParams['font.family'] = 'serif'
+    plt.rcParams['font.monospace'] = 'Ubuntu Mono'
+    plt.rcParams['font.size'] = 12
+    plt.rcParams['axes.labelsize'] = 12
+    plt.rcParams['axes.labelweight'] = 'bold'
+    plt.rcParams['xtick.labelsize'] = 12
+    plt.rcParams['ytick.labelsize'] = 12
+    plt.rcParams['legend.fontsize'] = 12
+    plt.rcParams['figure.titlesize'] = 12
+    probs = model.predict_proba(best_steps)
+    rfd_probs = [item[1] for item in probs]
+    line_width = 2
+    if factual_type == 'FP' or factual_type == 'TP':
+        ax[0].plot(rfd_probs, '-k',
+                   label=('Probability Not Ready for Discharge'),
+                   linewidth=line_width)
+    else:
+        ax[0].plot(rfd_probs, '-k',
+                   label=('Probability Ready for Discharge'),
+                   linewidth=line_width)
+    if factual_type == 'FP' or factual_type == 'TP':
+        thresh = 1 - thresh
+    ax[0].axhline(thresh, color='red', linestyle='--',
+                  linewidth=line_width, alpha=0.5, label='Discharge Threshold')
+    ax[0].legend(fancybox=True, framealpha=0.3)
+    ax[0].set_ylim([0, 1])
+    num_inst = len(path_df.index)
+    ind_inst = np.arange(0, num_inst)
+    for i in range(top_n_features):
+        print(i)
+        ax[1].plot(ind_inst, abs_combined.iloc[:, i],
+                   label=str(list(abs_combined.columns.values)[i]), linewidth=line_width)
+    ax[1].legend(framealpha=0.3,
+                 fancybox=True, ncol=2)
+    ax[1].xaxis.set_major_locator(MaxNLocator(integer=True))
+    ax[1].set_xlim([0, num_inst-1])
+    ax[1].axhline(0, color='black', linestyle='--', linewidth=line_width)
+    x_fill = np.arange(0, len(abs_combined))
+    ax[1].fill_between(x=x_fill, y1=safe_bound, y2=-safe_bound, color='green',
+                       interpolate=True, alpha=.25)
+    ax[1].set_xlabel('Recourse Sequence', fontsize=12)
+    plt.tight_layout()
+    plt.savefig(
+        "local_face/plots/RFD/RFD_{}_feats{}_seed{}.pdf".format(factual_type, top_n_features, seed))
+    plt.show()
+
 
 if graph:
     # Plot probabilites over the path
@@ -271,6 +328,8 @@ if graph:
     plt.savefig(
         "local_face/plots/RFD/RFD_{}_feats{}_seed{}.pdf".format(factual_type, top_n_features, seed))
     plt.show()
+
+
 print('Top features to track between examples:')
 print('factual info: ')
 print('certainty {}'.format(model.predict_proba(
@@ -289,3 +348,43 @@ for i in range(1, len(path_df.index)):
     volatile_combined = path_df_inversed_scaling.iloc[i-1][volatile_feats] - \
         path_df_inversed_scaling.iloc[i][volatile_feats]
     print(volatile_combined)
+
+
+# Heatmap of feature changes over the path
+# Transpose dataframe so that columns are the recourse steps
+# Plotted like this to use colour range independently for each row/feature
+
+
+# to_plot options:
+#    path_df_inversed_scaling -> all features
+#    unscaled_abs_combined -> top n features with the largest relative change
+#         from factual to counterfactual, based off the scaled range but then unscaled
+to_plot = unscaled_abs_combined
+
+f, axs = plt.subplots(len(to_plot.T),
+                      1, gridspec_kw={'hspace': 0})
+
+counter = 0
+for index, row in to_plot.T.iterrows():
+    sns.heatmap(
+        np.array([row.values]),
+        yticklabels=[to_plot.columns[counter]],
+        xticklabels=to_plot.T.columns,
+        annot=True,
+        ax=axs[counter],
+        cbar=False,
+        robust=True,
+    )
+    counter += 1
+
+for ax in axs:
+    ax.tick_params(axis='y', rotation=0)
+
+
+f.suptitle(f'Method 1 for case {seed}')
+f.supxlabel('Recourse step')
+# f.supylabel('Variable')
+plt.tight_layout()
+plt.savefig(
+    "local_face/plots/RFD/RFD_heatmap_{}_seed{}.pdf".format(factual_type, seed), bbox_inches="tight")
+plt.show()

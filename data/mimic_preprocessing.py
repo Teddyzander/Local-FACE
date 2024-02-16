@@ -117,6 +117,17 @@ def factual_selector(dataset, features, model, scale, seed=42, alignment='all_ne
 
 
 def inverse_scaling(data, features):
+    '''
+    Get feature values back to their original unscaled values
+
+    Args:
+        data (dataframe): one row per set of readings
+        features (list): the complete set of features, not to be modified
+
+    Returns:
+        Dataframe of the unscaled readings
+
+    '''
     with open('rfd_model/standard_scaler.pkl', 'rb') as file:
         scaler = pickle.load(file)
 
@@ -126,6 +137,19 @@ def inverse_scaling(data, features):
 
 
 def scaling(data, features):
+    '''
+    Scale readings: from their original magnitude to the scaled range.
+    Useful for adding constraints.
+
+    Args:
+        data (dataframe): one row per set of readings
+        features (list): the complete set of features, not to be modified
+
+    Returns:
+        Dataframe of the scaled readings
+
+    '''
+
     with open('rfd_model/standard_scaler.pkl', 'rb') as file:
         scaler = pickle.load(file)
 
@@ -134,7 +158,20 @@ def scaling(data, features):
     return scaled
 
 
-def feature_constrain_range(factual, features, feature, constrain_range):
+def feature_constrain_range(factual, features, feature, constrain_distance):
+    '''
+    Define the upper and lower bounds to constrain features to, in the scaled range
+    Args:
+        factual
+        features (list): the complete set of features, not to be modified
+        feature (str): feature of interest, eg 'age'
+        constrain_distance (float): allowable distance from the feature value
+            eg 0.5 for age would mean the age is constrained to +/- 0.5 years
+            from the current value
+    Returns:
+        lower and upper value limits for the constraint
+
+    '''
 
     print(f'--- processing for feature {feature} ---')
     # first, get unscaled original feature value
@@ -142,7 +179,7 @@ def feature_constrain_range(factual, features, feature, constrain_range):
         pd.DataFrame(factual.reshape(-1, len(factual)), columns=features), features)
 
     # get lower value, first in unscaled range
-    unscaled[feature] = unscaled[feature] - constrain_range
+    unscaled[feature] = unscaled[feature] - constrain_distance
     # Now get scaled lower age
     scaled = scaling(unscaled, features)
     lower_value = scaled[feature][0]
@@ -152,7 +189,7 @@ def feature_constrain_range(factual, features, feature, constrain_range):
 
     # get higher value, first in unscaled range
     unscaled = unscaled
-    unscaled[feature] = unscaled[feature] + constrain_range
+    unscaled[feature] = unscaled[feature] + constrain_distance
     # Now get scaled higher age
     scaled = scaling(unscaled, features)
     upper_value = scaled[feature][0]
