@@ -75,11 +75,11 @@ all_columns = X_train.columns
 if scale:
     model = pickle.load(
         open(
-            'rfd_model/results/rf_combined_standardscale.pickle',
+            'rfd_model/rfd_model_combined_standardscale.pickle',
             'rb'
         ))
 else:
-    model = pickle.load(open('rfd_model/results/rf.pickle', 'rb'))
+    model = pickle.load(open('rfd_model/rfd_model.pickle', 'rb'))
 
 # sanity check that AUC performance matches expectation
 result = roc_auc_score(
@@ -195,6 +195,9 @@ print('Deviation Factor (linear distance/total distance): {}'.format(lin_dist/to
 
 # And copy in the original unscaled space
 path_df_inversed_scaling = inverse_scaling(path_df, features)
+
+print('Path in unscaled units', path_df_inversed_scaling)
+
 
 # Find most relevant / changing / volatile features to display
 # Identify features with largest std
