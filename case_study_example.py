@@ -31,7 +31,7 @@ target = 1
 
 # optionally, choose the type of factual:
 # 'FN', 'FP', 'TN', 'TP' or 'all_neg' for TN+FP
-factual_type = 'TN'
+factual_type = 'FN'
 
 if factual_type == 'FP' or factual_type == 'TP':
     target = 0
@@ -360,20 +360,28 @@ for i in range(1, len(path_df.index)):
 #    unscaled_abs_combined -> top n features with the largest relative change
 #         from factual to counterfactual, based off the scaled range but then unscaled
 to_plot = unscaled_abs_combined
+to_plot.insert(0, "RFD Score", rfd_probs, True)
 
 f, axs = plt.subplots(len(to_plot.T),
                       1, gridspec_kw={'hspace': 0})
 
 counter = 0
 for index, row in to_plot.T.iterrows():
+    if counter == 0:
+        centre = 0.5
+    else:
+        centre = row[0]
     sns.heatmap(
-        np.array([row.values]),
+        np.array(np.round([row.values], 2)),
         yticklabels=[to_plot.columns[counter]],
         xticklabels=to_plot.T.columns,
         annot=True,
         ax=axs[counter],
         cbar=False,
         robust=True,
+        center=centre,
+        cmap="vlag_r",
+        fmt='g'
     )
     counter += 1
 
@@ -385,6 +393,7 @@ f.suptitle(f'Method 1 for case {seed}')
 f.supxlabel('Recourse step')
 # f.supylabel('Variable')
 plt.tight_layout()
+plt.subplots_adjust(left=0.2)
 plt.savefig(
-    "local_face/plots/RFD/RFD_heatmap_{}_seed{}.pdf".format(factual_type, seed), bbox_inches="tight")
+    "local_face/plots/RFD/RFD_heatmap_{}_seed{}.pdf".format(factual_type, seed))
 plt.show()
