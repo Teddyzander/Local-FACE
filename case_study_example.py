@@ -31,7 +31,7 @@ target = 1
 
 # optionally, choose the type of factual:
 # 'FN', 'FP', 'TN', 'TP' or 'all_neg' for TN+FP
-factual_type = 'FN'
+factual_type = 'TN'
 
 if factual_type == 'FP' or factual_type == 'TP':
     target = 0
@@ -359,6 +359,12 @@ for i in range(1, len(path_df.index)):
 #    path_df_inversed_scaling -> all features
 #    unscaled_abs_combined -> top n features with the largest relative change
 #         from factual to counterfactual, based off the scaled range but then unscaled
+
+# bounds for "healthy person"
+centre_data = [0.5, 0.6, 95, 19, 10, 30, 100, 60, 100, 0.5, 7, 36, 37.5, 90, 4.75, 140, 81.5, 5.15, 21, 3.5, 50, 0.5]
+
+centres = pd.DataFrame([centre_data], columns=features)
+
 to_plot = unscaled_abs_combined
 to_plot.insert(0, "RFD Score", rfd_probs, True)
 
@@ -395,5 +401,83 @@ f.supxlabel('Recourse step')
 plt.tight_layout()
 plt.subplots_adjust(left=0.2)
 plt.savefig(
-    "local_face/plots/RFD/RFD_heatmap_{}_seed{}.pdf".format(factual_type, seed))
+    "local_face/plots/RFD/heatmaps/RFD_heatmap_{}_seed{}_full.pdf".format(factual_type, seed))
+plt.show()
+
+plt.clf()
+
+f, axs = plt.subplots(len(to_plot.T),
+                      1, gridspec_kw={'hspace': 0})
+
+counter = 0
+for index, row in to_plot.T.iterrows():
+    if counter == 0:
+        centre = 0.5
+    else:
+        centre = centres[to_plot.columns[counter]][0]
+    sns.heatmap(
+        np.array(np.round([row.values], 2)),
+        yticklabels=[to_plot.columns[counter]],
+        xticklabels=to_plot.T.columns,
+        annot=True,
+        ax=axs[counter],
+        cbar=False,
+        robust=True,
+        center=centre,
+        cmap="vlag_r",
+        fmt='g'
+    )
+    counter += 1
+
+for ax in axs:
+    ax.tick_params(axis='y', rotation=0)
+
+
+f.suptitle(f'Method 1 for case {seed}')
+f.supxlabel('Recourse step')
+# f.supylabel('Variable')
+plt.tight_layout()
+plt.subplots_adjust(left=0.2)
+plt.savefig(
+    "local_face/plots/RFD/heatmaps/RFD_heatmap_{}_seed{}_full_healthybounds.pdf".format(factual_type, seed))
+plt.show()
+
+plt.clf()
+
+#get first and last column
+new_df = to_plot.iloc[[0, -1]]
+
+f, axs = plt.subplots(len(new_df.T),
+                      1, gridspec_kw={'hspace': 0})
+
+counter = 0
+for index, row in new_df.T.iterrows():
+    if counter == 0:
+        centre = 0.5
+    else:
+        centre = row[0]
+    sns.heatmap(
+        np.array(np.round([row.values], 2)),
+        yticklabels=[to_plot.columns[counter]],
+        xticklabels=to_plot.T.columns,
+        annot=True,
+        ax=axs[counter],
+        cbar=False,
+        robust=True,
+        center=centre,
+        cmap="vlag_r",
+        fmt='g'
+    )
+    counter += 1
+
+for ax in axs:
+    ax.tick_params(axis='y', rotation=0)
+
+f.suptitle(f'Method 1 for case {seed}')
+f.supxlabel('Recourse step')
+# f.supylabel('Variable')
+plt.tight_layout()
+plt.subplots_adjust(left=0.2)
+plt.savefig(
+    "local_face/plots/RFD/heatmaps/RFD_heatmap_{}_seed{}_end.pdf".format(factual_type, seed))
 plt.show()
