@@ -194,6 +194,6 @@ def feature_constrain_range(factual, features, feature, constrain_distance):
     scaled = scaling(unscaled, features)
     upper_value = scaled[feature][0]
 
-    print(f'scaled allowable {feature} range {lower_value} - {upper_value}')
+    print(f'scaled allowable {feature} range {lower_value} to {upper_value}')
 
     return lower_value, upper_value

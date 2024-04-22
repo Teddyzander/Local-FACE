@@ -24,20 +24,20 @@ bandwidth_search = False  # search for optimal bandwidth
 k = 50
 thresh = 0.75
 dist = 1
-seed = 7
+seed = 2
 method_type = 'strict'
 prob_dense = 1*10**(-12)
 target = 1
 
 # optionally, choose the type of factual:
 # 'FN', 'FP', 'TN', 'TP' or 'all_neg' for TN+FP
-factual_type = 'TN'
+factual_type = 'FP'
 
 if factual_type == 'FP' or factual_type == 'TP':
     target = 0
 
 # Extract top n
-top_n_features = 10
+top_n_features = 5
 
 # parameters for density model creation
 
@@ -96,23 +96,28 @@ X_train_den = np.array(X_train)
 dense = KernelDensity(kernel='tophat', bandwidth=band_width).fit(X_train_den)
 
 # how far from the current value we allow a change in age
-age_range = 0.5  # years
+age_range = 25  # years
+los_range = 300  # days
 
 if scale:
     age_lower, age_higher = feature_constrain_range(
         factual, features, 'age', age_range)
+    los_lower, los_higher = feature_constrain_range(
+        factual, features, 'los', los_range)
 
 else:
     age_lower = factual['age'] - age_range
     age_higher = factual['age'] + age_range
+    los_lower = factual['los'] - los_range
+    los_higher = factual['los'] + los_range
 
 # print('age range_lower', age_lower, 'age range_higher', age_higher)
 
 # optionally constrain available datapoints to variables of interest
 upper_age = ">"+str(age_higher)
 lower_age = "<"+str(age_lower)
-upper_los = ">"+str(factual[19] + 2)
-lower_los = "<"+str(factual[19] - 2)
+upper_los = ">"+str(los_higher)
+lower_los = "<"+str(los_lower)
 constraints = [
     [],  # 'airway'
     [],  # 'fio2',
@@ -266,10 +271,11 @@ if graph:
     x_fill = np.arange(0, len(abs_combined))
     ax[1].fill_between(x=x_fill, y1=safe_bound, y2=-safe_bound, color='green',
                        interpolate=True, alpha=.25)
-    ax[1].set_xlabel('Recourse Sequence', fontsize=12)
+    ax[1].set_xlabel('Recourse step', fontsize=12)
+    plt.suptitle(f'{factual_type} case {seed}')
     plt.tight_layout()
     plt.savefig(
-        "local_face/plots/RFD/RFD_{}_feats{}_seed{}.pdf".format(factual_type, top_n_features, seed))
+        "local_face/plots/RFD/RFD_{}_feats{}_seed{}_safe_bound.pdf".format(factual_type, top_n_features, seed))
     plt.show()
 
 
@@ -323,7 +329,8 @@ if graph:
     ax[2].set_xlim([0, num_inst-1])
     ax[2].axhline(0, color='black', linestyle='--', linewidth='0.75')
     '''
-    ax[1].set_xlabel('Recourse Sequence', fontsize=12)
+    ax[1].set_xlabel('Recourse step', fontsize=12)
+    # plt.suptitle(f'{factual_type} case {seed}')
     plt.tight_layout()
     plt.savefig(
         "local_face/plots/RFD/RFD_{}_feats{}_seed{}.pdf".format(factual_type, top_n_features, seed))
@@ -361,7 +368,8 @@ for i in range(1, len(path_df.index)):
 #         from factual to counterfactual, based off the scaled range but then unscaled
 
 # bounds for "healthy person"
-centre_data = [0.5, 0.6, 95, 19, 10, 30, 100, 60, 100, 0.5, 7, 36, 37.5, 90, 4.75, 140, 81.5, 5.15, 21, 3.5, 50, 0.5]
+centre_data = [0.5, 0.6, 95, 19, 10, 30, 100, 60, 100, 0.5,
+               7, 36, 37.5, 90, 4.75, 140, 81.5, 5.15, 21, 3.5, 50, 0.5]
 
 centres = pd.DataFrame([centre_data], columns=features)
 
@@ -384,6 +392,7 @@ for index, row in to_plot.T.iterrows():
         annot=True,
         ax=axs[counter],
         cbar=False,
+        annot_kws={"fontsize": 8},
         robust=True,
         center=centre,
         cmap="vlag_r",
@@ -395,7 +404,7 @@ for ax in axs:
     ax.tick_params(axis='y', rotation=0)
 
 
-f.suptitle(f'Method 1 for case {seed}')
+f.suptitle(f'{factual_type} case {seed}')
 f.supxlabel('Recourse step')
 # f.supylabel('Variable')
 plt.tight_layout()
@@ -423,6 +432,7 @@ for index, row in to_plot.T.iterrows():
         ax=axs[counter],
         cbar=False,
         robust=True,
+        annot_kws={"fontsize": 8},
         center=centre,
         cmap="vlag_r",
         fmt='g'
@@ -433,7 +443,7 @@ for ax in axs:
     ax.tick_params(axis='y', rotation=0)
 
 
-f.suptitle(f'Method 1 for case {seed}')
+f.suptitle(f'{factual_type} case {seed}')
 f.supxlabel('Recourse step')
 # f.supylabel('Variable')
 plt.tight_layout()
@@ -444,7 +454,7 @@ plt.show()
 
 plt.clf()
 
-#get first and last column
+# get first and last column
 new_df = to_plot.iloc[[0, -1]]
 
 f, axs = plt.subplots(len(new_df.T),
@@ -459,11 +469,12 @@ for index, row in new_df.T.iterrows():
     sns.heatmap(
         np.array(np.round([row.values], 2)),
         yticklabels=[to_plot.columns[counter]],
-        xticklabels=to_plot.T.columns,
+        xticklabels=to_plot.T.columns[0:2],
         annot=True,
         ax=axs[counter],
         cbar=False,
         robust=True,
+        annot_kws={"fontsize": 8},
         center=centre,
         cmap="vlag_r",
         fmt='g'
@@ -473,7 +484,7 @@ for index, row in new_df.T.iterrows():
 for ax in axs:
     ax.tick_params(axis='y', rotation=0)
 
-f.suptitle(f'Method 1 for case {seed}')
+f.suptitle(f'{factual_type} case {seed}')
 f.supxlabel('Recourse step')
 # f.supylabel('Variable')
 plt.tight_layout()
