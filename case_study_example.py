@@ -1,3 +1,4 @@
+
 from data.mimic_preprocessing import *
 from local_face.local_face import *
 from local_face.helpers.plotters import *
@@ -31,7 +32,7 @@ target = 1
 
 # optionally, choose the type of factual:
 # 'FN', 'FP', 'TN', 'TP' or 'all_neg' for TN+FP
-factual_type = 'FP'
+factual_type = 'TN'
 
 if factual_type == 'FP' or factual_type == 'TP':
     target = 0
@@ -404,7 +405,7 @@ for ax in axs:
     ax.tick_params(axis='y', rotation=0)
 
 
-f.suptitle(f'{factual_type} case {seed}')
+# f.suptitle(f'{factual_type} case {seed}')
 f.supxlabel('Recourse step')
 # f.supylabel('Variable')
 plt.tight_layout()
@@ -443,7 +444,7 @@ for ax in axs:
     ax.tick_params(axis='y', rotation=0)
 
 
-f.suptitle(f'{factual_type} case {seed}')
+# f.suptitle(f'{factual_type} case {seed}')
 f.supxlabel('Recourse step')
 # f.supylabel('Variable')
 plt.tight_layout()
@@ -465,7 +466,7 @@ for index, row in new_df.T.iterrows():
     if counter == 0:
         centre = 0.5
     else:
-        centre = row[0]
+        centre = centres[to_plot.columns[counter]][0]
     sns.heatmap(
         np.array(np.round([row.values], 2)),
         yticklabels=[to_plot.columns[counter]],
@@ -484,7 +485,7 @@ for index, row in new_df.T.iterrows():
 for ax in axs:
     ax.tick_params(axis='y', rotation=0)
 
-f.suptitle(f'{factual_type} case {seed}')
+# f.suptitle(f'{factual_type} case {seed}')
 f.supxlabel('Recourse step')
 # f.supylabel('Variable')
 plt.tight_layout()
