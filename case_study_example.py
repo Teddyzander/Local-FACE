@@ -20,6 +20,9 @@ warnings.filterwarnings("ignore")
 graph = True  # plotting
 scale = True  # stanardised input data
 bandwidth_search = False  # search for optimal bandwidth
+model_type = 'rf'  # 'rf' = random forest, 'lr' = logistic regression
+# optionally, choose the type of factual:
+factual_type = 'FP'  # 'FN', 'FP', 'TN', 'TP' or 'all_neg' for TN+FP
 
 # parameters for locating counterfactual and path
 k = 50
@@ -30,9 +33,6 @@ method_type = 'strict'
 prob_dense = 1*10**(-12)
 target = 1
 
-# optionally, choose the type of factual:
-# 'FN', 'FP', 'TN', 'TP' or 'all_neg' for TN+FP
-factual_type = 'TN'
 
 if factual_type == 'FP' or factual_type == 'TP':
     target = 0
@@ -75,11 +75,23 @@ all_columns = X_train.columns
 
 # trained random forest model
 if scale:
-    model = pickle.load(
-        open(
-            'rfd_model/rfd_model_combined_standardscale.pickle',
-            'rb'
-        ))
+    if model_type == "rf":
+        model = pickle.load(
+            open(
+                'rfd_model/rfd_model_combined_standardscale.pickle',
+                'rb'
+            ))
+    elif model_type == "lr":
+        model = pickle.load(
+            open(
+                'rfd_model/lr_combined_standardscale.pickle',
+                'rb'
+            ))
+    else:
+        print(
+            "choose a suitable model type: rf (random forest) or lr (logistic regression)")
+        exit()
+
 else:
     model = pickle.load(open('rfd_model/rfd_model.pickle', 'rb'))
 
@@ -89,8 +101,21 @@ result = roc_auc_score(
 print(f'Test set AUC performance {result:.3f}')
 
 # ---- select factual ----
-factual = factual_selector('mimic', features, model,
-                           seed=seed, scale=scale, alignment=factual_type)
+# If establishing which factual to select, run this:
+# factual = factual_selector('mimic', features, model,
+#                           seed=seed, scale=scale, alignment=factual_type)
+# np.save("factual_fp.npy", factual)
+
+# Otherwise, load an existing factual, which is particularly useful for comparing models with the same factual
+if factual_type == 'FN':
+    factual = np.load("factual_fn.npy")
+elif factual_type == 'TN':
+    factual = np.load("factual_tn.npy")
+elif factual_type == 'FP':
+    factual = np.load("factual_fp.npy")
+else:
+    print('No factual loaded, choose a different factual type')
+print('--Factual--', factual)
 
 # train density estimator using training data
 X_train_den = np.array(X_train)
@@ -161,6 +186,8 @@ face = LocalFace(X_train, model, dense)  # constrained
 print(r"Finding counterfactual x' (explore)...")
 start_explore = time.time()
 steps, cf = face.find_cf(factual, k=k, thresh=thresh, mom=0, target=target)
+
+print("-----cf-----", cf)
 print('Explore time taken: {} seconds'.format(
     np.round(time.time() - start_explore, 2)))
 overall_recourse = pd.DataFrame([factual - cf], columns=features)
@@ -273,10 +300,10 @@ if graph:
     ax[1].fill_between(x=x_fill, y1=safe_bound, y2=-safe_bound, color='green',
                        interpolate=True, alpha=.25)
     ax[1].set_xlabel('Recourse step', fontsize=12)
-    plt.suptitle(f'{factual_type} case {seed}')
+    plt.suptitle(f'{factual_type} case {seed} {model_type} model')
     plt.tight_layout()
     plt.savefig(
-        "local_face/plots/RFD/RFD_{}_feats{}_seed{}_safe_bound.pdf".format(factual_type, top_n_features, seed))
+        "local_face/plots/RFD/RFD_{}_feats{}_seed{}_safe_bound_{}_model.pdf".format(factual_type, top_n_features, seed, model_type))
     plt.show()
 
 
@@ -324,7 +351,7 @@ if graph:
     for i in range(top_n_features):
         print(i)
         ax[2].plot(ind_inst, volatile_combined.iloc[:, i],
-                   label=str(list(volatile_combined.columns.values)[i]), linewidth=0.5)
+                label=str(list(volatile_combined.columns.values)[i]), linewidth=0.5)
     ax[2].legend(framealpha=0.3, fancybox=True, ncol=top_n_features)
     ax[2].xaxis.set_major_locator(MaxNLocator(integer=True))
     ax[2].set_xlim([0, num_inst-1])
@@ -334,7 +361,7 @@ if graph:
     # plt.suptitle(f'{factual_type} case {seed}')
     plt.tight_layout()
     plt.savefig(
-        "local_face/plots/RFD/RFD_{}_feats{}_seed{}.pdf".format(factual_type, top_n_features, seed))
+        "local_face/plots/RFD/RFD_{}_feats{}_seed{}_{}_model.pdf".format(factual_type, top_n_features, seed, model_type))
     plt.show()
 
 
@@ -411,7 +438,7 @@ f.supxlabel('Recourse step')
 plt.tight_layout()
 plt.subplots_adjust(left=0.2)
 plt.savefig(
-    "local_face/plots/RFD/heatmaps/RFD_heatmap_{}_seed{}_full.pdf".format(factual_type, seed))
+    "local_face/plots/RFD/heatmaps/RFD_heatmap_{}_seed{}_full_{}_model.pdf".format(factual_type, seed, model_type))
 plt.show()
 
 plt.clf()
@@ -450,7 +477,7 @@ f.supxlabel('Recourse step')
 plt.tight_layout()
 plt.subplots_adjust(left=0.2)
 plt.savefig(
-    "local_face/plots/RFD/heatmaps/RFD_heatmap_{}_seed{}_full_healthybounds.pdf".format(factual_type, seed))
+    "local_face/plots/RFD/heatmaps/RFD_heatmap_{}_seed{}_full_healthybounds_{}_model.pdf".format(factual_type, seed, model_type))
 plt.show()
 
 plt.clf()
@@ -491,5 +518,5 @@ f.supxlabel('Recourse step')
 plt.tight_layout()
 plt.subplots_adjust(left=0.2)
 plt.savefig(
-    "local_face/plots/RFD/heatmaps/RFD_heatmap_{}_seed{}_end.pdf".format(factual_type, seed))
+    "local_face/plots/RFD/heatmaps/RFD_heatmap_{}_seed{}_{}_model_end.pdf".format(factual_type, seed, model_type))
 plt.show()
